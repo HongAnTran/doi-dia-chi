@@ -74,3 +74,14 @@ Dự án đã có `components.json`. Thêm component:
 ```bash
 pnpm dlx shadcn@latest add <tên-component>
 ```
+
+## File Naming Conventions
+
+- Name component files in kebab-case, e.g. `sign-in-form.tsx`, `submit-button.tsx`.
+- Export React components in PascalCase, e.g. `SignInForm`, `SubmitButton`.
+- Name hook files with the `use-` prefix in kebab-case, e.g. `use-media-query.ts`.
+- Export hooks in camelCase and start them with `use`, e.g. `useMediaQuery`.
+- Name lib, utility, config, service, and validation files in kebab-case, e.g. `api-client.ts`, `auth-utils.ts`.
+- Name route folders in kebab-case, e.g. `sign-in`, `user-settings`.
+- Keep Next.js special files using their official names: `page.tsx`, `layout.tsx`, `route.ts`, `loading.tsx`, `error.tsx`, `not-found.tsx`.
+- Avoid broad barrel exports such as `components/index.ts`; prefer direct imports from the source file.
