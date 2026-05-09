@@ -75,6 +75,78 @@ Dự án đã có `components.json`. Thêm component:
 pnpm dlx shadcn@latest add <tên-component>
 ```
 
+## Docker & CI/CD
+
+Dự án có sẵn `Dockerfile` (multi-stage, Next.js standalone), `docker-compose.yml` (Next.js + Postgres) và workflow `.github/workflows/ci-cd.yml`.
+
+### Luồng CI/CD
+
+Mỗi lần push lên `master`:
+
+1. **test** — `pnpm install` → `pnpm prisma generate` → `pnpm check` (typecheck + lint + format).
+2. **build-and-push** — chạy nếu test pass: build image `linux/amd64` rồi push lên Docker Hub với 2 tag: `latest` và `sha-<short>`.
+3. **deploy** — SSH vào VPS, chạy `docker compose pull && docker compose up -d` rồi dọn image cũ (`docker image prune -f`).
+
+Pull request vào `master` chỉ chạy job test (không build, không deploy).
+
+### Setup một lần
+
+#### 1) Trên Docker Hub
+
+- Tạo repo `xeup` (public hoặc private).
+- Tạo Access Token (Account Settings → Security → New Access Token, scope **Read & Write**).
+
+#### 2) Trên VPS
+
+```bash
+# cài Docker (nếu chưa)
+curl -fsSL https://get.docker.com | sh
+
+# tạo thư mục project
+mkdir -p ~/xeup && cd ~/xeup
+
+# copy docker-compose.yml và .env.production.example từ repo về
+# rồi đổi tên thành .env và chỉnh giá trị
+cp .env.production.example .env
+nano .env
+
+# nếu Docker Hub repo là private:
+docker login
+
+# chạy lần đầu để verify
+docker compose pull && docker compose up -d
+```
+
+Tạo SSH key dành riêng cho deploy và thêm public key vào `~/.ssh/authorized_keys` của VPS.
+
+#### 3) GitHub Secrets
+
+Vào repo → Settings → Secrets and variables → Actions, thêm:
+
+| Secret                | Giá trị                                                            |
+| --------------------- | ------------------------------------------------------------------ |
+| `DOCKERHUB_USERNAME`  | Username Docker Hub                                                |
+| `DOCKERHUB_TOKEN`     | Access token tạo ở bước 1                                          |
+| `VPS_HOST`            | IP hoặc domain của VPS                                             |
+| `VPS_USER`            | User SSH (vd `root`, `ubuntu`)                                     |
+| `VPS_SSH_KEY`         | **Private key** SSH (toàn bộ nội dung, gồm `-----BEGIN ...-----`)  |
+| `VPS_SSH_PORT`        | (Tuỳ chọn) Port SSH nếu khác `22`                                  |
+| `VPS_PROJECT_PATH`    | Đường dẫn tuyệt đối tới thư mục chứa `docker-compose.yml` (vd `/root/xeup`) |
+
+#### 4) Cập nhật `docker-compose.yml` trên VPS
+
+Trong `.env` trên VPS đặt `DOCKER_IMAGE=<DOCKERHUB_USERNAME>/xeup:latest`. Mọi lần deploy GHA sẽ pull tag `latest` mới nhất.
+
+### Build thủ công (khẩn cấp / không qua GHA)
+
+```bash
+docker buildx build --platform linux/amd64 \
+  -t <username>/xeup:latest --push .
+
+# trên VPS
+docker compose pull && docker compose up -d
+```
+
 ## File Naming Conventions
 
 - Name component files in kebab-case, e.g. `sign-in-form.tsx`, `submit-button.tsx`.
