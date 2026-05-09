@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SKELETON
 
-## Getting Started
+Skeleton **Next.js 16** (App Router) với **PostgreSQL + Prisma**, **Better Auth** (email/mật khẩu + Google), **Tailwind CSS 4**, **shadcn/ui** và **React 19**.
 
-First, run the development server:
+## Yêu cầu
+
+- [Node.js](https://nodejs.org/) (khuyến nghị LTS)
+- [pnpm](https://pnpm.io/)
+- PostgreSQL (local hoặc hosted)
+
+## Cài đặt nhanh
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Tạo file `.env` ở thư mục gốc (xem mục biến môi trường bên dưới), sau đó:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm db:generate
+pnpm db:migrate
+pnpm dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Ứng dụng chạy tại [http://localhost:3000](http://localhost:3000).
 
-## Learn More
+## Biến môi trường
 
-To learn more about Next.js, take a look at the following resources:
+Các biến được validate trong `src/env.ts` (Zod). Tối thiểu cần:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Biến                 | Mô tả                                          |
+| -------------------- | ---------------------------------------------- |
+| `DATABASE_URL`       | Chuỗi kết nối PostgreSQL                       |
+| `BETTER_AUTH_SECRET` | Chuỗi bí mật, **ít nhất 32 ký tự**             |
+| `BETTER_AUTH_URL`    | URL gốc của app (dev: `http://localhost:3000`) |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Đăng nhập Google (tùy chọn): thêm `GOOGLE_CLIENT_ID` và `GOOGLE_CLIENT_SECRET` nếu bật OAuth Google trong `src/lib/auth.ts`.
 
-## Deploy on Vercel
+## Scripts hay dùng
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Lệnh                        | Mục đích                                                |
+| --------------------------- | ------------------------------------------------------- |
+| `pnpm dev`                  | Chạy dev server                                         |
+| `pnpm build` / `pnpm start` | Build và chạy production                                |
+| `pnpm check`                | `typecheck` + `lint` + `format:check`                   |
+| `pnpm db:generate`          | Sinh Prisma Client (output: `src/app/generated/prisma`) |
+| `pnpm db:migrate`           | Chạy migration dev                                      |
+| `pnpm db:studio`            | Mở Prisma Studio                                        |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Cấu trúc `src` (tóm tắt)
+
+- **`src/app/`** — Routes, layout, `globals.css`. API auth: `src/app/api/auth/[...all]/route.ts`.
+- **`src/components/`** — UI (shadcn trong `components/ui/`), theme (`theme-provider.tsx`, `mode-toggle.tsx`).
+- **`src/lib/`** — `auth.ts` (cấu hình Better Auth), `auth-client.ts` (client React), `prisma.ts` (singleton Prisma + adapter `pg`), `utils.ts`.
+- **`src/env.ts`** — Schema và parse biến môi trường; import `env` thay vì dùng `process.env` trực tiếp khi cần type an toàn.
+- **`src/app/generated/prisma/`** — Client Prisma do generator tạo (không chỉnh tay).
+
+## Database & Prisma
+
+- Schema: `prisma/schema.prisma` (PostgreSQL, model User/Session/Account/Verification phục vụ Better Auth).
+- Sau khi đổi schema: `pnpm db:migrate` (hoặc workflow migrate bạn đang dùng), rồi `pnpm db:generate` nếu cần.
+
+## Auth & trang mẫu
+
+- Đăng ký / đăng nhập: `src/app/sign-up/page.tsx`, `src/app/sign-in/page.tsx`.
+- Trang chủ mẫu: `src/app/page.tsx` (đọc session, ví dụ truy vấn Prisma).
+
+Client-side gọi `authClient` từ `src/lib/auth-client.ts`; server dùng `auth` từ `src/lib/auth.ts`.
+
+## UI (shadcn)
+
+Dự án đã có `components.json`. Thêm component:
+
+```bash
+pnpm dlx shadcn@latest add <tên-component>
+```
