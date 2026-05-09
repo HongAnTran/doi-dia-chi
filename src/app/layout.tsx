@@ -37,8 +37,8 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <QueryProvider>
-            
-            <ConfirmProvider>{children}</ConfirmProvider></QueryProvider>
+            <ConfirmProvider>{children}</ConfirmProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

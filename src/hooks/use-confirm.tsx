@@ -49,7 +49,10 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     <ConfirmContext.Provider value={{ confirm }}>
       {children}
 
-      <AlertDialog open={Boolean(options)} onOpenChange={() => handleClose(false)}>
+      <AlertDialog
+        open={Boolean(options)}
+        onOpenChange={() => handleClose(false)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>

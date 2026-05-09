@@ -22,7 +22,7 @@ function readLocalStorage<T>(key: string, initialValue: T): T {
 
 export function useLocalStorage<T>(key: string, initialValue: T) {
   const [value, setValue] = useState<T>(() =>
-    readLocalStorage(key, initialValue)
+    readLocalStorage(key, initialValue),
   );
 
   useEffect(() => {
