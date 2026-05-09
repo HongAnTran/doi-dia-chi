@@ -123,15 +123,15 @@ Tạo SSH key dành riêng cho deploy và thêm public key vào `~/.ssh/authoriz
 
 Vào repo → Settings → Secrets and variables → Actions, thêm:
 
-| Secret                | Giá trị                                                            |
-| --------------------- | ------------------------------------------------------------------ |
-| `DOCKERHUB_USERNAME`  | Username Docker Hub                                                |
-| `DOCKERHUB_TOKEN`     | Access token tạo ở bước 1                                          |
-| `VPS_HOST`            | IP hoặc domain của VPS                                             |
-| `VPS_USER`            | User SSH (vd `root`, `ubuntu`)                                     |
-| `VPS_SSH_KEY`         | **Private key** SSH (toàn bộ nội dung, gồm `-----BEGIN ...-----`)  |
-| `VPS_SSH_PORT`        | (Tuỳ chọn) Port SSH nếu khác `22`                                  |
-| `VPS_PROJECT_PATH`    | Đường dẫn tuyệt đối tới thư mục chứa `docker-compose.yml` (vd `/root/xeup`) |
+| Secret               | Giá trị                                                                     |
+| -------------------- | --------------------------------------------------------------------------- |
+| `DOCKERHUB_USERNAME` | Username Docker Hub                                                         |
+| `DOCKERHUB_TOKEN`    | Access token tạo ở bước 1                                                   |
+| `VPS_HOST`           | IP hoặc domain của VPS                                                      |
+| `VPS_USER`           | User SSH (vd `root`, `ubuntu`)                                              |
+| `VPS_SSH_KEY`        | **Private key** SSH (toàn bộ nội dung, gồm `-----BEGIN ...-----`)           |
+| `VPS_SSH_PORT`       | (Tuỳ chọn) Port SSH nếu khác `22`                                           |
+| `VPS_PROJECT_PATH`   | Đường dẫn tuyệt đối tới thư mục chứa `docker-compose.yml` (vd `/root/xeup`) |
 
 #### 4) Cập nhật `docker-compose.yml` trên VPS
 
