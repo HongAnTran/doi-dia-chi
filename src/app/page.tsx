@@ -21,7 +21,6 @@ export default async function Home() {
   });
   console.log(accounts);
 
-
   return (
     <div>
       <h1>Hello World</h1>
