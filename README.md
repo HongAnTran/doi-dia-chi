@@ -47,26 +47,6 @@ Các biến được validate trong `src/env.ts` (Zod). Tối thiểu cần:
 | `pnpm db:migrate`           | Chạy migration dev                                      |
 | `pnpm db:studio`            | Mở Prisma Studio                                        |
 
-## Cấu trúc `src` (tóm tắt)
-
-- **`src/app/`** — Routes, layout, `globals.css`. API auth: `src/app/api/auth/[...all]/route.ts`.
-- **`src/components/`** — UI (shadcn trong `components/ui/`), theme (`theme-provider.tsx`, `mode-toggle.tsx`).
-- **`src/lib/`** — `auth.ts` (cấu hình Better Auth), `auth-client.ts` (client React), `prisma.ts` (singleton Prisma + adapter `pg`), `utils.ts`.
-- **`src/env.ts`** — Schema và parse biến môi trường; import `env` thay vì dùng `process.env` trực tiếp khi cần type an toàn.
-- **`src/app/generated/prisma/`** — Client Prisma do generator tạo (không chỉnh tay).
-
-## Database & Prisma
-
-- Schema: `prisma/schema.prisma` (PostgreSQL, model User/Session/Account/Verification phục vụ Better Auth).
-- Sau khi đổi schema: `pnpm db:migrate` (hoặc workflow migrate bạn đang dùng), rồi `pnpm db:generate` nếu cần.
-
-## Auth & trang mẫu
-
-- Đăng ký / đăng nhập: `src/app/sign-up/page.tsx`, `src/app/sign-in/page.tsx`.
-- Trang chủ mẫu: `src/app/page.tsx` (đọc session, ví dụ truy vấn Prisma).
-
-Client-side gọi `authClient` từ `src/lib/auth-client.ts`; server dùng `auth` từ `src/lib/auth.ts`.
-
 ## UI (shadcn)
 
 Dự án đã có `components.json`. Thêm component:
@@ -74,6 +54,17 @@ Dự án đã có `components.json`. Thêm component:
 ```bash
 pnpm dlx shadcn@latest add <tên-component>
 ```
+
+## File Naming Conventions
+
+- Name component files in kebab-case, e.g. `sign-in-form.tsx`, `submit-button.tsx`.
+- Export React components in PascalCase, e.g. `SignInForm`, `SubmitButton`.
+- Name hook files with the `use-` prefix in kebab-case, e.g. `use-media-query.ts`.
+- Export hooks in camelCase and start them with `use`, e.g. `useMediaQuery`.
+- Name lib, utility, config, service, and validation files in kebab-case, e.g. `api-client.ts`, `auth-utils.ts`.
+- Name route folders in kebab-case, e.g. `sign-in`, `user-settings`.
+- Keep Next.js special files using their official names: `page.tsx`, `layout.tsx`, `route.ts`, `loading.tsx`, `error.tsx`, `not-found.tsx`.
+- Avoid broad barrel exports such as `components/index.ts`; prefer direct imports from the source file.
 
 ## Docker & CI/CD
 
@@ -146,14 +137,3 @@ docker buildx build --platform linux/amd64 \
 # trên VPS
 docker compose pull && docker compose up -d
 ```
-
-## File Naming Conventions
-
-- Name component files in kebab-case, e.g. `sign-in-form.tsx`, `submit-button.tsx`.
-- Export React components in PascalCase, e.g. `SignInForm`, `SubmitButton`.
-- Name hook files with the `use-` prefix in kebab-case, e.g. `use-media-query.ts`.
-- Export hooks in camelCase and start them with `use`, e.g. `useMediaQuery`.
-- Name lib, utility, config, service, and validation files in kebab-case, e.g. `api-client.ts`, `auth-utils.ts`.
-- Name route folders in kebab-case, e.g. `sign-in`, `user-settings`.
-- Keep Next.js special files using their official names: `page.tsx`, `layout.tsx`, `route.ts`, `loading.tsx`, `error.tsx`, `not-found.tsx`.
-- Avoid broad barrel exports such as `components/index.ts`; prefer direct imports from the source file.
