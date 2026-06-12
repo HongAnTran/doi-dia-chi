@@ -1,0 +1,49 @@
+{
+  "comment": "Các ngoại lệ đã phân xử giữa bảng chuyển đổi chính thức của Cục Thống kê (tải từ https://danhmuchanhchinh.nso.gov.vn/TAPTIN/BangChuyendoiĐVHCmoi_cu_final.xlsx trong build-data) và nguồn cộng đồng vietnamadminunits. keepPairs: cặp đúng theo nghị quyết nhưng thiếu/sai trong bảng GSO — giữ lại. ignoreGsoPairs: dòng GSO ghi đúng tên xã nhưng cột mã lấy nhầm mã xã lân cận cùng huyện (đối chiếu mã với danh mục chính thức qua dataset daohoangson/dvhcvn) — bỏ qua, cặp đúng mã đã có trong keepPairs.",
+  "keepPairs": [
+    {
+      "oldWardCode": "556",
+      "newWardCode": "562",
+      "reason": "NQ 1656/NQ-UBTVQH15 (Hà Nội): xã Thuận An gồm một phần diện tích tự nhiên, toàn bộ dân số của xã Đặng Xá (huyện Gia Lâm). Bảng GSO ghi tên Đặng Xá nhưng gắn mã 00553 (mã của xã Cổ Bi).",
+      "source": "https://xaydungchinhsach.chinhphu.vn/toan-van-nghi-quyet-so-1656-nq-ubtvqh15-sap-xep-cac-dvhc-cap-xa-cua-thanh-pho-ha-noi-nam-2025-119250616192433872.htm"
+    },
+    {
+      "oldWardCode": "1651",
+      "newWardCode": "1648",
+      "reason": "NQ 1657/NQ-UBTVQH15 (Cao Bằng): xã Phục Hòa gồm toàn bộ thị trấn Tà Lùng, thị trấn Hòa Thuận, xã Mỹ Hưng và xã Đại Sơn. Bảng GSO ghi tên Mỹ Hưng nhưng gắn mã 01615 (mã của xã Hồng Quang — xã này thuộc xã Bế Văn Đàn mới).",
+      "source": "https://xaydungchinhsach.chinhphu.vn/nghi-quyet-1657-nq-ubtvqh15-ve-viec-sap-xep-cac-don-vi-hanh-chinh-cap-xa-cua-tinh-cao-bang-nam-2025-119250616223837133.htm"
+    },
+    {
+      "oldWardCode": "2482",
+      "newWardCode": "2494",
+      "reason": "NQ 1684/NQ-UBTVQH15 (Tuyên Quang) khoản 28: xã Thái Bình gồm toàn bộ xã Phú Thịnh, xã Tiến Bộ và một phần xã Thái Bình. Bảng GSO ghi tên Phú Thịnh nhưng gắn mã 02485 (mã của xã Công Đa — xã này thuộc xã Trung Sơn mới, khoản 27).",
+      "source": "https://xaydungchinhsach.chinhphu.vn/toan-van-nghi-quyet-so-1684-nq-ubtvqh15-sap-xep-cac-dvhc-cap-xa-cua-tinh-tuyen-quang-nam-2025-119250616211706973.htm"
+    },
+    {
+      "oldWardCode": "23053",
+      "newWardCode": "23041",
+      "reason": "NQ 1671/NQ-UBTVQH15 (Lâm Đồng): xã Hồng Thái gồm toàn bộ xã Phan Thanh, xã Hồng Thái và một phần diện tích tự nhiên của xã Hòa Thắng (huyện Bắc Bình, Bình Thuận cũ). Bảng GSO thiếu dòng này.",
+      "source": "https://xaydungchinhsach.chinhphu.vn/toan-van-nghi-quyet-so-1671-nq-ubtvqh15-sap-xep-cac-dvhc-cap-xa-cua-tinh-lam-dong-nam-2025-119250616201715664.htm"
+    }
+  ],
+  "ignoreGsoPairs": [
+    {
+      "oldWardCode": "553",
+      "newWardCode": "562",
+      "reason": "Dòng GSO ghi tên Đặng Xá nhưng mã 00553 là mã xã Cổ Bi. NQ 1656: Cổ Bi không thuộc thành phần xã Thuận An (Cổ Bi thuộc xã Gia Lâm mới). Cặp đúng là 556>562 (keepPairs).",
+      "source": "https://xaydungchinhsach.chinhphu.vn/toan-van-nghi-quyet-so-1656-nq-ubtvqh15-sap-xep-cac-dvhc-cap-xa-cua-thanh-pho-ha-noi-nam-2025-119250616192433872.htm"
+    },
+    {
+      "oldWardCode": "1615",
+      "newWardCode": "1648",
+      "reason": "Dòng GSO ghi tên Mỹ Hưng nhưng mã 01615 là mã xã Hồng Quang. NQ 1657: Hồng Quang thuộc xã Bế Văn Đàn mới, không thuộc Phục Hòa. Cặp đúng là 1651>1648 (keepPairs).",
+      "source": "https://xaydungchinhsach.chinhphu.vn/nghi-quyet-1657-nq-ubtvqh15-ve-viec-sap-xep-cac-don-vi-hanh-chinh-cap-xa-cua-tinh-cao-bang-nam-2025-119250616223837133.htm"
+    },
+    {
+      "oldWardCode": "2485",
+      "newWardCode": "2494",
+      "reason": "Dòng GSO ghi tên Phú Thịnh nhưng mã 02485 là mã xã Công Đa. NQ 1684 khoản 27: Công Đa thuộc xã Trung Sơn mới, không thuộc Thái Bình. Cặp đúng là 2482>2494 (keepPairs).",
+      "source": "https://xaydungchinhsach.chinhphu.vn/toan-van-nghi-quyet-so-1684-nq-ubtvqh15-sap-xep-cac-dvhc-cap-xa-cua-tinh-tuyen-quang-nam-2025-119250616211706973.htm"
+    }
+  ]
+}

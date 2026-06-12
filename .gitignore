@@ -42,3 +42,6 @@ next-env.d.ts
 
 
 /src/app/generated/prisma
+
+# build-data download cache
+scripts/.cache/
