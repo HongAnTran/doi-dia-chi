@@ -1,6 +1,7 @@
 import {
   ArrowLeftRight,
   BookOpen,
+  Heart,
   Layers,
   Mail,
   Search,
@@ -19,6 +20,7 @@ export const NAV_LINKS: ReadonlyArray<{
   { href: "/tra-cuu", label: "Tra cứu", icon: Search },
   { href: "/blog", label: "Cẩm nang", icon: BookOpen },
   { href: "/lien-he", label: "Liên hệ", icon: Mail },
+  { href: "/ung-ho", label: "Ủng hộ", icon: Heart },
 ];
 
 /** Active-state rule shared by both navs: exact match for home, prefix elsewhere. */

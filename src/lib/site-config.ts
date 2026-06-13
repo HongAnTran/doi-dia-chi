@@ -18,6 +18,11 @@ export function absoluteUrl(path: string): string {
   return new URL(path, SITE_URL).toString();
 }
 
+// Donation QR (ủng hộ tác giả). A static image dropped under /public; the QR is
+// square. Caption text is shown beneath it (e.g. bank/ví name + account holder).
+export const DONATE_QR_SRC = "/donate/qr.jpg";
+export const DONATE_CAPTION = "Quét mã để ủng hộ — cảm ơn bạn rất nhiều!";
+
 // Analytics & search-console verification. Both read from env and are optional:
 // nothing is rendered until the corresponding value is set.
 /** GA4 measurement id, e.g. "G-XXXXXXXXXX". */

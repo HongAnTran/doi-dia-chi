@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, FileText, MapPin, RotateCcw } from "lucide-react";
 
 import { CopyButton } from "@/components/converter/copy-button";
+import { DonateDialog } from "@/components/donate/donate-dialog";
 import { ReportDataDialog } from "@/components/feedback/report-data-dialog";
 import {
   SearchableCombobox,
@@ -718,7 +719,8 @@ function ResultCard({
       </div>
       <div className="p-5">{children}</div>
       {reportAddress && (
-        <div className="border-border bg-secondary/40 flex justify-end border-t px-5 py-2.5">
+        <div className="border-border bg-secondary/40 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t px-5 py-2.5">
+          <DonateDialog />
           <ReportDataDialog address={reportAddress} />
         </div>
       )}
