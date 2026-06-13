@@ -55,10 +55,6 @@ export async function generateMetadata({
     title: `${ward.name}, ${province.name} sáp nhập từ đâu?`,
     description: `${summary} Tra cứu danh sách phường/xã cũ, mã và nghị quyết liên quan.`,
     alternates: { canonical },
-    openGraph: {
-      title: `${ward.name} được sáp nhập từ đâu?`,
-      url: canonical,
-    },
   };
 }
 
@@ -105,13 +101,13 @@ export default async function NewWardPage({
 
   const placeJsonLd = {
     "@context": "https://schema.org",
-    "@type": "Place",
+    "@type": "AdministrativeArea",
     name: `${ward.name}, ${province.name}`,
     url: absoluteUrl(`/xa-moi/${slug}`),
-    address: {
-      "@type": "PostalAddress",
-      addressCountry: "VN",
-      addressRegion: province.name,
+    containedInPlace: {
+      "@type": "AdministrativeArea",
+      name: province.name,
+      containedInPlace: { "@type": "Country", name: "Việt Nam" },
     },
   };
 

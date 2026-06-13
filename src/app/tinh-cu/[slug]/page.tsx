@@ -4,12 +4,13 @@ import { notFound } from "next/navigation";
 
 import { Breadcrumbs } from "@/components/common/breadcrumbs";
 import { DataFreshness } from "@/components/common/data-freshness";
+import { JsonLd } from "@/components/seo/json-ld";
 import {
   getNewProvincesForOldProvince,
   getOldProvince,
   getOldProvinceOptions,
 } from "@/lib/converter";
-import { DATA_UPDATED_DISPLAY } from "@/lib/site-config";
+import { DATA_UPDATED_DISPLAY, absoluteUrl } from "@/lib/site-config";
 import { buildSlug, codeFromSlug } from "@/lib/slug";
 
 export const dynamicParams = false;
@@ -58,6 +59,15 @@ export default async function OldProvincePage({
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-10">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "AdministrativeArea",
+          name: `${province.name} (cũ)`,
+          url: absoluteUrl(`/tinh-cu/${slug}`),
+          containedInPlace: { "@type": "Country", name: "Việt Nam" },
+        }}
+      />
       <Breadcrumbs
         items={[
           { name: "Trang chủ", href: "/" },
