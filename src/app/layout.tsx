@@ -36,7 +36,7 @@ export default function RootLayout({
           <QueryProvider>
             <ConfirmProvider>
               <header className="border-b">
-                <div className="mx-auto flex w-full max-w-2xl items-center justify-between px-4 py-3">
+                <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 py-3">
                   <Link
                     href="/"
                     className="text-sm font-semibold tracking-tight"

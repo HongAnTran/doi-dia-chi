@@ -1,0 +1,2 @@
+# Generated data — keep compact (written by scripts/build-*.ts), don't reformat
+src/data/*.json

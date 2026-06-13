@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getOldProvince } from "@/lib/converter";
 
 const CACHE_HEADERS = {
-  "Cache-Control": "public, max-age=86400, s-maxage=86400",
+  "Cache-Control": "no-store",
 };
 
 export async function GET(

@@ -24,6 +24,7 @@ import type {
   MappingRecord,
   NewProvince,
   OldProvince,
+  TransferKind,
 } from "../src/lib/address-types";
 
 const BASE_URL =
@@ -57,6 +58,8 @@ interface GsoExceptionPair {
   newWardCode: string;
   reason: string;
   source: string;
+  /** Kiểu chuyển giao theo nghị quyết, cho cặp không có trong bảng GSO. */
+  transfer?: TransferKind;
 }
 
 interface GsoExceptions {
@@ -80,11 +83,31 @@ function decodeXmlEntities(s: string): string {
 }
 
 /**
+ * Classifies the GSO "Ghi chú" wording for divided wards:
+ * "Nhập một phần diện tích, toàn bộ dân số" → fullPopulation,
+ * "Nhập một phần diện tích" (no dân số) → landOnly,
+ * anything else (generic "Nhập một phần", "Nhập toàn bộ", ...) → undefined.
+ */
+function classifyTransfer(note: string): TransferKind | undefined {
+  const n = normalizeVietnamese(note);
+  if (!n.includes("mot phan")) return undefined;
+  if (n.includes("toan bo dan so")) return "fullPopulation";
+  if (n.includes("dien tich") && !n.includes("dan so")) return "landOnly";
+  return undefined;
+}
+
+interface GsoPair {
+  oldWardCode: string;
+  newWardCode: string;
+  transfer?: TransferKind;
+}
+
+/**
  * Reads the GSO xlsx and returns its old→new ward pairs (codes normalized,
  * zero-padding stripped). Rows without an old code (đặc khu island districts,
  * coastal alluvial areas) are skipped — our synthetic d-codes cover them.
  */
-function parseGsoPairs(): { oldWardCode: string; newWardCode: string }[] {
+function parseGsoPairs(): GsoPair[] {
   const shared = readZipEntry(GSO_XLSX, "xl/sharedStrings.xml");
   const strings = [...shared.matchAll(/<si>([\s\S]*?)<\/si>/g)].map((m) =>
     decodeXmlEntities(
@@ -93,7 +116,7 @@ function parseGsoPairs(): { oldWardCode: string; newWardCode: string }[] {
   );
   // sheet2.xml = "Tổng hợp_không merge" (sheet1 has merged cells with gaps)
   const sheetXml = readZipEntry(GSO_XLSX, "xl/worksheets/sheet2.xml");
-  const pairs: { oldWardCode: string; newWardCode: string }[] = [];
+  const pairs: GsoPair[] = [];
   for (const row of sheetXml.matchAll(
     /<row [^>]*r="(\d+)"[^>]*>([\s\S]*?)<\/row>/g,
   )) {
@@ -105,11 +128,12 @@ function parseGsoPairs(): { oldWardCode: string; newWardCode: string }[] {
       const [, col, type, val] = c;
       cells[col] = type === "s" ? strings[Number(val)] : (val ?? "");
     }
-    // C = mã xã mới, E = mã xã cũ; province group rows have neither
+    // C = mã xã mới, E = mã xã cũ, F = ghi chú; province group rows have neither code
     const newWardCode = parseCode(cells.C ?? "");
     const oldWardCode = parseCode(cells.E ?? "");
     if (!newWardCode || !oldWardCode) continue;
-    pairs.push({ oldWardCode, newWardCode });
+    const transfer = classifyTransfer((cells.F ?? "").trim());
+    pairs.push({ oldWardCode, newWardCode, ...(transfer ? { transfer } : {}) });
   }
   return pairs;
 }
@@ -312,6 +336,17 @@ async function main() {
   const gsoSet = new Set(
     gsoPairs.map((p) => pairKey(p.oldWardCode, p.newWardCode)),
   );
+  // Transfer kind (đất/dân cư) per pair: from the GSO Ghi chú, with the
+  // adjudicated exceptions (sourced from NQ wording) taking precedence.
+  const transferByPair = new Map<string, TransferKind>();
+  for (const p of gsoPairs) {
+    if (p.transfer)
+      transferByPair.set(pairKey(p.oldWardCode, p.newWardCode), p.transfer);
+  }
+  for (const e of exceptions.keepPairs) {
+    if (e.transfer)
+      transferByPair.set(pairKey(e.oldWardCode, e.newWardCode), e.transfer);
+  }
   const keepSet = new Set(
     exceptions.keepPairs.map((e) => pairKey(e.oldWardCode, e.newWardCode)),
   );
@@ -323,7 +358,11 @@ async function main() {
     if (oldCode.startsWith("d")) continue; // đặc khu rows have no old code in GSO
     const kept = group.filter(({ record }) => {
       const k = pairKey(record.oldWardCode, record.newWardCode);
-      if (gsoSet.has(k) || keepSet.has(k)) return true;
+      if (gsoSet.has(k) || keepSet.has(k)) {
+        const transfer = transferByPair.get(k);
+        if (transfer) record.transfer = transfer;
+        return true;
+      }
       console.log(`  GSO cross-check: drop ${k} (not in official table)`);
       droppedCount++;
       return false;
@@ -334,9 +373,19 @@ async function main() {
     groups.set(oldCode, kept);
   }
 
+  // Order within a divided group: nơi nhận toàn bộ dân cư trước, rồi xã
+  // "mặc định" của nguồn cộng đồng, rồi phần đất-không-dân cuối cùng.
+  const rank = (e: { record: MappingRecord; isDefault: boolean }) =>
+    e.record.transfer === "fullPopulation"
+      ? 0
+      : e.record.transfer === "landOnly"
+        ? 3
+        : e.isDefault
+          ? 1
+          : 2;
   const mapping: MappingRecord[] = [];
   for (const group of groups.values()) {
-    group.sort((a, b) => Number(b.isDefault) - Number(a.isDefault));
+    group.sort((a, b) => rank(a) - rank(b));
     for (const { record } of group) mapping.push(record);
   }
 
@@ -351,7 +400,11 @@ async function main() {
       throw new Error(`GSO pair references unknown ward code: ${k}`);
     }
     console.log(`  GSO cross-check: add ${k} (missing from community source)`);
-    mapping.push({ oldWardCode: p.oldWardCode, newWardCode: p.newWardCode });
+    mapping.push({
+      oldWardCode: p.oldWardCode,
+      newWardCode: p.newWardCode,
+      ...(p.transfer ? { transfer: p.transfer } : {}),
+    });
     ourSet.add(k);
     addedCount++;
   }
@@ -395,6 +448,11 @@ async function main() {
   console.log(
     `  GSO cross-check: ${droppedCount} dropped, ${addedCount} added, ` +
       `${keepSet.size} kept by exception, ${ignoreSet.size} GSO rows ignored`,
+  );
+  const landOnly = mapping.filter((m) => m.transfer === "landOnly").length;
+  const fullPop = mapping.filter((m) => m.transfer === "fullPopulation").length;
+  console.log(
+    `  transfer kinds : ${fullPop} toàn bộ dân số, ${landOnly} chỉ diện tích (không dân cư)`,
   );
 }
 

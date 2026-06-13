@@ -33,10 +33,59 @@ export interface NewUnitsFile {
   provinces: NewProvince[];
 }
 
+/**
+ * How the old ward's territory moved into the new ward, per the official
+ * GSO conversion table / NQ wording:
+ * - "landOnly": chỉ một phần diện tích, không kèm dân cư
+ * - "fullPopulation": toàn bộ dân số của đơn vị cũ chuyển về đây
+ * - undefined: chuyển cả diện tích lẫn dân số (hoặc nhập toàn bộ)
+ */
+export type TransferKind = "landOnly" | "fullPopulation";
+
 export interface MappingRecord {
   oldWardCode: string;
   newWardCode: string;
   note?: string;
+  transfer?: TransferKind;
+}
+
+// Hamlet (thôn/ấp/tổ dân phố) resolution — see scripts/build-hamlets.ts for
+// sourcing and safety rules.
+
+/** File shape (src/data/hamlets.json). nameNormalized is computed at load. */
+export interface HamletFileRecord {
+  name: string;
+  /** Set only when the hamlet resolves to exactly one new ward (split wards). */
+  newWardCode?: string;
+}
+
+export interface WardHamlets {
+  oldWardCode: string;
+  /** Provenance of the assignment, for traceability. */
+  source: string;
+  hamlets: HamletFileRecord[];
+}
+
+/** Runtime shape returned to the UI (adds normalized name for search). */
+export interface HamletRecord extends HamletFileRecord {
+  nameNormalized: string;
+}
+
+/** new→old: a hamlet of a (merged) new ward, mapped to the old ward it was in. */
+export interface NewWardHamletRecord {
+  name: string;
+  oldWardCode: string;
+}
+
+export interface NewWardHamlets {
+  newWardCode: string;
+  source: string;
+  hamlets: NewWardHamletRecord[];
+}
+
+/** Runtime shape returned to the UI (adds normalized name for search). */
+export interface NewWardHamlet extends NewWardHamletRecord {
+  nameNormalized: string;
 }
 
 // Converter results
@@ -47,6 +96,9 @@ export interface OldUnitRef {
   districtName: string;
   provinceName: string;
   fullAddress: string;
+  transfer?: TransferKind;
+  /** New→old direction: hamlets of this old ward now in the queried new ward. */
+  hamletNames?: string[];
 }
 
 export interface NewUnitRef {
@@ -55,6 +107,7 @@ export interface NewUnitRef {
   provinceName: string;
   fullAddress: string;
   note?: string;
+  transfer?: TransferKind;
 }
 
 export interface OldToNewResult {
@@ -63,10 +116,23 @@ export interface OldToNewResult {
   matches: NewUnitRef[];
   /** True when the old ward was split into multiple new wards. */
   isAmbiguous: boolean;
+  /**
+   * The old ward's hamlets (when the data source has them), for the optional
+   * thôn picker. For a split ward, a hamlet with `newWardCode` pins the exact
+   * new ward; a hamlet without one is unresolved (UI warns, shows all).
+   */
+  hamlets?: HamletRecord[];
+  hamletSource?: string;
 }
 
 export interface NewToOldResult {
   from: NewUnitRef;
   /** Every old ward that was merged into the new ward — always the full list. */
   sources: OldUnitRef[];
+  /**
+   * Hamlets of the new ward, each mapped back to its old ward. Picking one
+   * pins the exact old address. May be partial; absent when no data.
+   */
+  hamlets?: NewWardHamlet[];
+  hamletSource?: string;
 }

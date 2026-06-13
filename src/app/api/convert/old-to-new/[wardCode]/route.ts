@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 
 import { convertOldToNew } from "@/lib/converter";
 
+// No HTTP caching: the converted result (incl. hamlet data) evolves with each
+// data rebuild, and a long-lived browser cache would serve stale responses.
+// React Query already dedupes these in-memory per session.
 const CACHE_HEADERS = {
-  "Cache-Control": "public, max-age=86400, s-maxage=86400",
+  "Cache-Control": "no-store",
 };
 
 export async function GET(

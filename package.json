@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check",
     "build-data": "tsx scripts/build-data.ts",
+    "build-hamlets": "tsx scripts/build-hamlets.ts",
     "test": "vitest run",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

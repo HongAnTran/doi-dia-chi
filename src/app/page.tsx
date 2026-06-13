@@ -3,7 +3,7 @@ import { getNewProvinceOptions, getOldProvinceOptions } from "@/lib/converter";
 
 export default function Home() {
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-12 sm:py-16">
+    <main className="mx-auto w-full max-w-3xl px-4 py-12 sm:py-16">
       <header className="mb-10">
         <p className="text-brand mb-2 text-xs font-medium tracking-widest uppercase">
           Sáp nhập hành chính 01/07/2025
@@ -21,16 +21,8 @@ export default function Home() {
         newProvinces={getNewProvinceOptions()}
       />
       <footer className="text-muted-foreground mt-16 border-t pt-6 text-xs leading-relaxed">
-        Dữ liệu từ dự án mã nguồn mở{" "}
-        <a
-          href="https://github.com/tranngocminhhieu/vietnamadminunits"
-          className="hover:text-foreground underline underline-offset-2"
-          target="_blank"
-          rel="noreferrer"
-        >
-          vietnamadminunits
-        </a>
-        . Kết quả mang tính tham khảo, vui lòng đối chiếu văn bản chính thức.
+        Dữ liệu từ Cục Thống kê Việt Nam . Kết quả mang tính tham khảo, vui lòng
+        đối chiếu văn bản chính thức.
       </footer>
     </main>
   );
