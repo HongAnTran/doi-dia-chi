@@ -43,7 +43,21 @@ export default function RootLayout({
                   >
                     Đổi địa chỉ
                   </Link>
-                  <ModeToggle />
+                  <nav className="flex items-center gap-4">
+                    <Link
+                      href="/"
+                      className="text-muted-foreground hover:text-foreground text-sm"
+                    >
+                      Tra cứu
+                    </Link>
+                    <Link
+                      href="/bulk"
+                      className="text-muted-foreground hover:text-foreground text-sm"
+                    >
+                      Chuyển hàng loạt
+                    </Link>
+                    <ModeToggle />
+                  </nav>
                 </div>
               </header>
               {children}

@@ -8,6 +8,7 @@ import {
   SearchableCombobox,
   type ComboboxOption,
 } from "@/components/converter/searchable-combobox";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type {
   HamletRecord,
@@ -16,6 +17,7 @@ import type {
   NewWardHamlet,
   OldProvince,
   OldToNewResult,
+  ParseResult,
   UnitBase,
 } from "@/lib/address-types";
 import { cn } from "@/lib/utils";
@@ -63,43 +65,68 @@ export function AddressConverter({
 
   return (
     <div>
-      <div role="tablist" className="grid grid-cols-2 border-b">
-        {(
-          [
-            ["oldToNew", "Cũ → Mới"],
-            ["newToOld", "Mới → Cũ"],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            id={`tab-${key}`}
-            role="tab"
-            type="button"
-            aria-selected={direction === key}
-            aria-controls="converter-panel"
-            onClick={() => setDirection(key)}
-            className={cn(
-              "-mb-px border-b-2 pb-3 text-sm font-medium transition-colors",
-              direction === key
-                ? "border-brand text-brand"
-                : "text-muted-foreground hover:text-foreground border-transparent",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <div
-        id="converter-panel"
-        role="tabpanel"
-        aria-labelledby={`tab-${direction}`}
-        className="pt-8"
-      >
-        {direction === "oldToNew" ? (
-          <OldToNewForm provinces={oldProvinces} />
-        ) : (
-          <NewToOldForm provinces={newProvinces} />
-        )}
+      {/* Hero: freeform paste is the primary entry point. */}
+      <section className="border-brand/30 bg-muted/30 rounded-xl border p-5 sm:p-6">
+        <h2 className="text-base font-semibold tracking-tight">
+          Dán địa chỉ bất kỳ để chuyển đổi nhanh
+        </h2>
+        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+          Dán nguyên chuỗi, app tự nhận diện và chuyển đổi. Hiểu cả cách viết
+          tắt và lộn xộn:{" "}
+          <span className="text-foreground">P6, Q1, TP.HCM</span>, gõ không dấu,
+          thừa số nhà…
+        </p>
+        <div className="mt-4">
+          <PasteAddressForm />
+        </div>
+      </section>
+
+      {/* Manual cascade as a secondary option. */}
+      <div className="mt-10">
+        <div className="text-muted-foreground mb-6 flex items-center gap-3 text-xs">
+          <span className="bg-border h-px flex-1" />
+          hoặc chọn thủ công
+          <span className="bg-border h-px flex-1" />
+        </div>
+        <div role="tablist" className="grid grid-cols-2 border-b">
+          {(
+            [
+              ["oldToNew", "Cũ → Mới"],
+              ["newToOld", "Mới → Cũ"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              id={`tab-${key}`}
+              role="tab"
+              type="button"
+              aria-selected={direction === key}
+              aria-controls="converter-panel"
+              onClick={() => setDirection(key)}
+              className={cn(
+                "-mb-px border-b-2 pb-3 text-sm font-medium transition-colors",
+                direction === key
+                  ? "border-brand text-brand"
+                  : "text-muted-foreground hover:text-foreground border-transparent",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div
+          id="converter-panel"
+          role="tabpanel"
+          aria-labelledby={`tab-${direction}`}
+          className="pt-8"
+        >
+          {direction === "oldToNew" && (
+            <OldToNewForm provinces={oldProvinces} />
+          )}
+          {direction === "newToOld" && (
+            <NewToOldForm provinces={newProvinces} />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -235,6 +262,126 @@ function OldToNewForm({ provinces }: { provinces: ProvinceOption[] }) {
           prefix={prefix}
           onShowAll={() => setHamletIdx(null)}
         />
+      )}
+    </div>
+  );
+}
+
+function PasteAddressForm() {
+  const [text, setText] = React.useState("");
+  const [query, setQuery] = React.useState("");
+  const [candidateIdx, setCandidateIdx] = React.useState(0);
+
+  const parseQuery = useQuery({
+    queryKey: ["parse", query],
+    queryFn: () =>
+      fetchJson<ParseResult>(`/api/parse?q=${encodeURIComponent(query)}`),
+    enabled: query.trim().length > 0,
+    staleTime: Infinity,
+  });
+
+  const candidates = parseQuery.data?.candidates ?? [];
+  const candidatesLoading = parseQuery.isLoading;
+  const chosen = candidates[candidateIdx];
+
+  // Convert the chosen candidate by reusing the directional endpoints.
+  const oldToNew = useQuery({
+    queryKey: ["convert", "old-to-new", chosen?.wardCode],
+    queryFn: () =>
+      fetchJson<OldToNewResult>(`/api/convert/old-to-new/${chosen!.wardCode}`),
+    enabled: chosen?.system === "old",
+    staleTime: Infinity,
+  });
+  const newToOld = useQuery({
+    queryKey: ["convert", "new-to-old", chosen?.wardCode],
+    queryFn: () =>
+      fetchJson<NewToOldResult>(`/api/convert/new-to-old/${chosen!.wardCode}`),
+    enabled: chosen?.system === "new",
+    staleTime: Infinity,
+  });
+
+  function submit() {
+    setCandidateIdx(0);
+    setQuery(text);
+  }
+
+  return (
+    <div className="space-y-4">
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
+        }}
+        rows={2}
+        placeholder="VD: 123 Nguyễn Văn Linh, Thanh Khê, Đà Nẵng"
+        className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-3"
+      />
+      <Button type="button" onClick={submit} disabled={!text.trim()}>
+        Nhận diện &amp; chuyển đổi
+      </Button>
+
+      {query.trim() && candidates.length === 0 && !candidatesLoading && (
+        <p className="text-muted-foreground border-t pt-4 text-sm">
+          Không nhận diện được phường/xã trong địa chỉ. Hãy kiểm tra lại, hoặc
+          dùng tab “Cũ → Mới” / “Mới → Cũ” để chọn thủ công.
+        </p>
+      )}
+
+      {candidates.length > 0 && chosen && (
+        <div className="space-y-4">
+          <div>
+            <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              Nhận diện được{" "}
+              {chosen.system === "old" ? "(địa chỉ cũ)" : "(địa chỉ mới)"}
+            </p>
+            <p className="mt-1 text-sm">
+              {chosen.street && (
+                <span className="text-muted-foreground">{chosen.street}, </span>
+              )}
+              {chosen.label}
+            </p>
+          </div>
+
+          {candidates.length > 1 && (
+            <div className="flex flex-wrap gap-2">
+              {candidates.map((c, i) => (
+                <button
+                  key={`${c.system}:${c.wardCode}`}
+                  type="button"
+                  onClick={() => setCandidateIdx(i)}
+                  className={cn(
+                    "rounded-lg border px-2.5 py-1 text-xs transition-colors",
+                    i === candidateIdx
+                      ? "border-brand text-brand"
+                      : "text-muted-foreground hover:text-foreground border-border",
+                  )}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {(oldToNew.isLoading || newToOld.isLoading) && <ResultPending />}
+          {(oldToNew.isError || newToOld.isError) && <ResultError />}
+          {chosen.system === "old" && oldToNew.data && (
+            <OldToNewResultView
+              result={oldToNew.data}
+              selectedHamlet={null}
+              prefix={chosen.street}
+              onShowAll={() => {}}
+            />
+          )}
+          {chosen.system === "new" && newToOld.data && (
+            <NewToOldResultView
+              result={newToOld.data}
+              selectedHamlet={null}
+              hamletName=""
+              street={chosen.street}
+            />
+          )}
+        </div>
       )}
     </div>
   );
@@ -383,17 +530,6 @@ function AddressRow({ address, note }: { address: string; note?: string }) {
   );
 }
 
-function HamletDisclaimer({ source }: { source?: string }) {
-  return (
-    <p className="text-muted-foreground mt-4 border-t pt-3 text-xs leading-relaxed">
-      Lưu ý: dữ liệu thôn/tổ dân phố lấy từ nguồn cộng đồng (diachimoi.net), đối
-      chiếu theo mã thôn — mang tính tham khảo và có thể chưa chính xác. Vui
-      lòng kiểm tra lại với giấy tờ, văn bản chính thức.
-      {source ? ` Nguồn: ${source}` : ""}
-    </p>
-  );
-}
-
 const NEW_TRANSFER_LABELS: Record<string, string> = {
   landOnly: "Chỉ nhận một phần diện tích, không có dân cư chuyển về",
   fullPopulation: "Nhận toàn bộ dân cư của đơn vị cũ",
@@ -454,7 +590,6 @@ function OldToNewResultView({
               có thể
             </button>
           )}
-          <HamletDisclaimer source={result.hamletSource} />
         </ResultSection>
       );
     }
@@ -481,7 +616,6 @@ function OldToNewResultView({
             />
           ))}
         </ul>
-        <HamletDisclaimer source={result.hamletSource} />
       </ResultSection>
     );
   }
@@ -522,9 +656,6 @@ function OldToNewResultView({
           />
         ))}
       </ul>
-      {result.hamlets && result.hamlets.length > 0 && (
-        <HamletDisclaimer source={result.hamletSource} />
-      )}
     </ResultSection>
   );
 }
@@ -592,9 +723,6 @@ function NewToOldResultView({
           ))}
         </ul>
       </div>
-      {result.hamlets && result.hamlets.length > 0 && (
-        <HamletDisclaimer source={result.hamletSource} />
-      )}
     </ResultSection>
   );
 }

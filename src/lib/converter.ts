@@ -9,7 +9,7 @@ import newUnitsJson from "@/data/new-units.json";
 import newWardHamletsJson from "@/data/new-ward-hamlets.json";
 import oldUnitsJson from "@/data/old-units.json";
 
-import { normalizeVietnamese } from "./normalize";
+import { normalizeVietnamese, stripUnitPrefix } from "./normalize";
 import type {
   HamletRecord,
   MappingRecord,
@@ -27,6 +27,9 @@ import type {
   OldUnitsFile,
   OldUnitRef,
   OldWard,
+  ParseCandidate,
+  ParseResult,
+  FreeformConversion,
   TransferKind,
 } from "./address-types";
 
@@ -189,6 +192,327 @@ export function convertNewToOld(newWardCode: string): NewToOldResult | null {
     ...(wardHamlets
       ? { hamlets: wardHamlets.hamlets, hamletSource: wardHamlets.source }
       : {}),
+  };
+}
+
+// --- Freeform address parsing ---------------------------------------------
+// Prebuilt lookup tables keyed by prefix-stripped, accent-free names.
+
+const unitKey = (name: string) => stripUnitPrefix(normalizeVietnamese(name));
+
+type TokenType = "ward" | "district" | "province" | "any";
+
+/**
+ * Classifies a freeform token by its declared prefix so that numbered units
+ * stay distinct: "f6"/"p6"/"phường 6" → ward, "q11"/"quận 11" → district,
+ * "tp …"/"tỉnh …" → province. Tokens with no prefix are "any".
+ */
+function classifyToken(part: string): { key: string; type: TokenType } {
+  const norm = normalizeVietnamese(part);
+  const key = stripUnitPrefix(norm);
+  if (/^(phuong|p|f)\.?\s*\d/.test(norm)) return { key, type: "ward" };
+  if (/^(quan|huyen|q|h)\.?\s*\d/.test(norm)) return { key, type: "district" };
+  const m = norm.match(
+    /^(thanh pho|thi xa|thi tran|tinh|quan|huyen|phuong|xa|tp|tx|tt|q|h|p|f)\.?\s+/,
+  );
+  if (m) {
+    const p = m[1];
+    if (["phuong", "xa", "thi tran", "tt", "p", "f"].includes(p))
+      return { key, type: "ward" };
+    if (["quan", "huyen", "thi xa", "tx", "q", "h"].includes(p))
+      return { key, type: "district" };
+    if (["thanh pho", "tp", "tinh"].includes(p))
+      return { key, type: "province" };
+  }
+  return { key, type: "any" };
+}
+
+interface OldProvinceIndex {
+  province: OldProvince;
+  wardsByKey: Map<string, OldWardEntry[]>;
+  districtKeys: Set<string>;
+}
+interface NewProvinceIndex {
+  province: NewProvince;
+  wardsByKey: Map<string, NewWard[]>;
+}
+
+const oldProvincesByKey = new Map<string, OldProvinceIndex>();
+for (const province of oldUnits.provinces) {
+  const wardsByKey = new Map<string, OldWardEntry[]>();
+  const districtKeys = new Set<string>();
+  for (const district of province.districts) {
+    districtKeys.add(unitKey(district.name));
+    for (const ward of district.wards) {
+      const key = unitKey(ward.name);
+      const list = wardsByKey.get(key) ?? [];
+      list.push({ ward, district, province });
+      wardsByKey.set(key, list);
+    }
+  }
+  oldProvincesByKey.set(unitKey(province.name), {
+    province,
+    wardsByKey,
+    districtKeys,
+  });
+}
+
+// Common acronyms / nicknames → province key (unitKey of the official name).
+const PROVINCE_ALIASES: Record<string, string> = {
+  hcm: "ho chi minh",
+  tphcm: "ho chi minh",
+  hcmc: "ho chi minh",
+  saigon: "ho chi minh",
+  "sai gon": "ho chi minh",
+  sg: "ho chi minh",
+  hn: "ha noi",
+  hanoi: "ha noi",
+  dn: "da nang",
+};
+
+/** Candidate province lookup keys for a token (handles prefixes + acronyms). */
+function provinceKeyVariants(part: string): string[] {
+  const norm = normalizeVietnamese(part);
+  const stripped = stripUnitPrefix(norm);
+  const noPunct = norm.replace(/[.\s]/g, ""); // "tp.hcm" → "tphcm"
+  const variants = new Set([stripped, noPunct]);
+  for (const k of [stripped, noPunct, norm]) {
+    const alias = PROVINCE_ALIASES[k];
+    if (alias) variants.add(alias);
+  }
+  return [...variants];
+}
+
+const newProvincesByKey = new Map<string, NewProvinceIndex>();
+for (const province of newUnits.provinces) {
+  const wardsByKey = new Map<string, NewWard[]>();
+  for (const ward of province.wards) {
+    const key = unitKey(ward.name);
+    const list = wardsByKey.get(key) ?? [];
+    list.push(ward);
+    wardsByKey.set(key, list);
+  }
+  newProvincesByKey.set(unitKey(province.name), { province, wardsByKey });
+}
+
+/**
+ * Parses a freeform, comma-separated Vietnamese address (e.g.
+ * "123 Nguyễn Văn Linh, Thanh Khê, Đà Nẵng") into ranked interpretations.
+ * Detects the province (rightmost), then a ward in either system; the
+ * unmatched leading tokens become the specific address (house, street).
+ * Returns convertible candidates only (those resolving to a ward).
+ */
+export function parseAddress(input: string): ParseResult {
+  const parts = input
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const infos = parts.map(classifyToken);
+  const keys = infos.map((i) => i.key);
+  const types = infos.map((i) => i.type);
+  const canBeWard = (i: number) => types[i] === "ward" || types[i] === "any";
+  const canBeProvince = (i: number) =>
+    types[i] === "province" || types[i] === "any";
+
+  interface Scored extends ParseCandidate {
+    score: number;
+    used: Set<number>;
+  }
+  const candidates: Scored[] = [];
+
+  const streetFrom = (used: Set<number>) =>
+    parts
+      .filter((_, i) => !used.has(i))
+      .join(", ")
+      .trim();
+
+  for (let pi = parts.length - 1; pi >= 0; pi--) {
+    if (!canBeProvince(pi)) continue;
+    const provVariants = provinceKeyVariants(parts[pi]);
+
+    let newProv: NewProvinceIndex | undefined;
+    for (const v of provVariants) {
+      newProv = newProvincesByKey.get(v);
+      if (newProv) break;
+    }
+    if (newProv) {
+      for (let wi = 0; wi < parts.length; wi++) {
+        if (wi === pi || !canBeWard(wi)) continue;
+        const wards = newProv.wardsByKey.get(keys[wi]);
+        if (!wards) continue;
+        for (const ward of wards) {
+          const used = new Set([pi, wi]);
+          candidates.push({
+            system: "new",
+            wardCode: ward.code,
+            label: `${ward.name}, ${newProv.province.name}`,
+            street: streetFrom(used),
+            score: 13 - wi, // prefer ward tokens nearer the front
+            used,
+          });
+        }
+      }
+    }
+
+    let oldProv: OldProvinceIndex | undefined;
+    for (const v of provVariants) {
+      oldProv = oldProvincesByKey.get(v);
+      if (oldProv) break;
+    }
+    if (oldProv) {
+      const oldProvDef = oldProv;
+      // District tokens present in the input → a hard scope for ward matching:
+      // if the user named a district, only accept wards inside it (never guess
+      // a same-named ward in another district).
+      // A token scopes the district when it's declared "quận/huyện…" or is an
+      // unprefixed name that happens to be a district. Tokens declared as a
+      // ward (p/f/phường) never count as a district, even if numbered alike.
+      const districtKeySet = new Set(
+        keys.filter(
+          (k, ki) =>
+            ki !== pi && types[ki] !== "ward" && oldProvDef.districtKeys.has(k),
+        ),
+      );
+
+      for (let wi = 0; wi < parts.length; wi++) {
+        if (wi === pi || !canBeWard(wi)) continue;
+        let entries = oldProvDef.wardsByKey.get(keys[wi]);
+        if (!entries) continue;
+        if (districtKeySet.size > 0) {
+          const inDistrict = entries.filter((e) =>
+            districtKeySet.has(unitKey(e.district.name)),
+          );
+          if (inDistrict.length === 0) continue; // named district has no such ward
+          entries = inDistrict;
+        }
+        for (const entry of entries) {
+          const districtIdx = keys.findIndex(
+            (k, ki) =>
+              ki !== pi && ki !== wi && k === unitKey(entry.district.name),
+          );
+          const used = new Set([pi, wi]);
+          if (districtIdx >= 0) used.add(districtIdx);
+          candidates.push({
+            system: "old",
+            wardCode: entry.ward.code,
+            label: `${entry.ward.name}, ${entry.district.name}, ${entry.province.name}`,
+            street: streetFrom(used),
+            // Penalize cross-district ambiguity (no district token to pin it).
+            score:
+              13 -
+              wi +
+              (districtIdx >= 0 ? 2 : 0) -
+              (entries.length > 1 ? 4 : 0),
+            used,
+          });
+        }
+      }
+    }
+  }
+
+  // Dedupe by system+ward, keep highest score, rank.
+  const best = new Map<string, Scored>();
+  for (const c of candidates) {
+    const k = `${c.system}:${c.wardCode}`;
+    const prev = best.get(k);
+    if (!prev || c.score > prev.score) best.set(k, c);
+  }
+  const sorted = [...best.values()].sort((a, b) => b.score - a.score);
+  // Drop low-confidence noise (e.g. "Quận 1" mis-read as "Phường 1").
+  const cutoff = sorted.length > 0 ? sorted[0].score - 2 : 0;
+  const ranked = sorted
+    .filter((c) => c.score >= cutoff)
+    .slice(0, 5)
+    .map(
+      ({ system, wardCode, label, street }): ParseCandidate => ({
+        system,
+        wardCode,
+        label,
+        street,
+      }),
+    );
+
+  return { query: input, candidates: ranked };
+}
+
+const withStreet = (street: string, address: string) =>
+  street ? `${street}, ${address}` : address;
+
+/**
+ * Converts one freeform address toward a target system — the unit behind bulk
+ * conversion. Detects the input's system, then:
+ *  - target "new": old → new (flags split wards, default first); new passes through.
+ *  - target "old": new → old (lists the merged old wards); old passes through.
+ *  - unrecognized → status "notFound".
+ */
+export function convertFreeform(
+  input: string,
+  target: "new" | "old",
+): FreeformConversion {
+  const { candidates } = parseAddress(input);
+  const top = candidates[0];
+  if (!top) return { input, status: "notFound" };
+  const street = top.street;
+
+  // Already in the target system → pass through unchanged.
+  if (top.system === target) {
+    return {
+      input,
+      status: "passthrough",
+      recognized: top.label,
+      result: withStreet(street, top.label),
+      note: target === "new" ? "Đã là địa chỉ mới" : "Đã là địa chỉ cũ",
+    };
+  }
+
+  if (target === "new") {
+    const res = convertOldToNew(top.wardCode);
+    if (!res || res.matches.length === 0)
+      return { input, status: "notFound", recognized: top.label };
+    // For residents, the destinations that actually receive population.
+    const residential = res.matches.filter((m) => m.transfer !== "landOnly");
+    const targets = residential.length > 0 ? residential : res.matches;
+    const primary = withStreet(street, targets[0].fullAddress);
+    if (targets.length === 1)
+      return {
+        input,
+        status: "converted",
+        recognized: top.label,
+        result: primary,
+      };
+    return {
+      input,
+      status: "ambiguous",
+      recognized: top.label,
+      result: primary,
+      alternatives: targets
+        .slice(1)
+        .map((m) => withStreet(street, m.fullAddress)),
+      note: `Đơn vị cũ chia vào ${targets.length} xã mới — đã chọn mặc định, hãy kiểm tra lại`,
+    };
+  }
+
+  // target === "old": one new ward is a merge of many old wards.
+  const res = convertNewToOld(top.wardCode);
+  if (!res || res.sources.length === 0)
+    return { input, status: "notFound", recognized: top.label };
+  const primary = withStreet(street, res.sources[0].fullAddress);
+  if (res.sources.length === 1)
+    return {
+      input,
+      status: "converted",
+      recognized: top.label,
+      result: primary,
+    };
+  return {
+    input,
+    status: "ambiguous",
+    recognized: top.label,
+    result: primary,
+    alternatives: res.sources
+      .slice(1)
+      .map((s) => withStreet(street, s.fullAddress)),
+    note: `Địa chỉ mới gộp từ ${res.sources.length} xã cũ — đây là các xã cũ thành phần, hãy đối chiếu`,
   };
 }
 

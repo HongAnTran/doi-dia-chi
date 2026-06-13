@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { convertNewToOld, convertOldToNew } from "./converter";
+import {
+  convertFreeform,
+  convertNewToOld,
+  convertOldToNew,
+  parseAddress,
+} from "./converter";
 import { normalizeVietnamese } from "./normalize";
 
 describe("convertOldToNew", () => {
@@ -201,5 +206,100 @@ describe("normalizeVietnamese", () => {
     expect(normalizeVietnamese("Thanh Khê")).toBe("thanh khe");
     expect(normalizeVietnamese("Quận Ba Đình")).toBe("quan ba dinh");
     expect(normalizeVietnamese("  Phường   Thủ Đức ")).toBe("phuong thu duc");
+  });
+});
+
+describe("parseAddress", () => {
+  it("parses the example and detects a new ward + street", () => {
+    const r = parseAddress("123 Nguyễn Văn Linh, Thanh Khê, Đà Nẵng");
+    expect(r.candidates.length).toBeGreaterThan(0);
+    const top = r.candidates[0];
+    expect(top.system).toBe("new");
+    expect(top.label).toBe("Phường Thanh Khê, Thành phố Đà Nẵng");
+    expect(top.street).toBe("123 Nguyễn Văn Linh");
+    // Resolves to a real new ward.
+    expect(convertNewToOld(top.wardCode)).not.toBeNull();
+  });
+
+  it("parses an old 3-level address with prefixes and an acronym province", () => {
+    const r = parseAddress("56 Lê Lợi, Phường Bến Nghé, Quận 1, TP.HCM");
+    const top = r.candidates[0];
+    expect(top.system).toBe("old");
+    expect(top.label).toBe("Phường Bến Nghé, Quận 1, Thành phố Hồ Chí Minh");
+    expect(top.street).toBe("56 Lê Lợi");
+  });
+
+  it("uses the district token to disambiguate same-named old wards", () => {
+    const r = parseAddress("Phúc Xá, Ba Đình, Hà Nội");
+    const top = r.candidates[0];
+    expect(top.system).toBe("old");
+    expect(top.label).toContain("Phường Phúc Xá");
+    expect(top.label).toContain("Quận Ba Đình");
+  });
+
+  it("returns no candidates when only a province is given", () => {
+    expect(parseAddress("Đà Nẵng").candidates).toHaveLength(0);
+  });
+
+  it("expands abbreviated/glued ward+district forms (P6, Q10, leading zeros)", () => {
+    for (const q of [
+      "123 Lê Văn Sỹ, P6, Q10, TPHCM",
+      "123 Lê Văn Sỹ, f.06, quận 10, hcm",
+    ]) {
+      const top = parseAddress(q).candidates[0];
+      expect(top.system).toBe("old");
+      expect(top.label).toBe("Phường 6, Quận 10, Thành phố Hồ Chí Minh");
+      expect(top.street).toBe("123 Lê Văn Sỹ");
+    }
+  });
+
+  it("uses prefixes to keep numbered ward vs district distinct, no cross-district guess", () => {
+    // Quận 3 has no "Phường 6" (merged), so don't fabricate one elsewhere.
+    expect(parseAddress("P6, Quận 3, TPHCM").candidates).toHaveLength(0);
+  });
+});
+
+describe("convertFreeform (bulk, both directions)", () => {
+  it("toNew: normalizes an unambiguous old address, keeping the street", () => {
+    const r = convertFreeform(
+      "123 Nguyễn Văn Linh, Phúc Xá, Ba Đình, Hà Nội",
+      "new",
+    );
+    expect(r.status).toBe("converted");
+    expect(r.result).toBe(
+      "123 Nguyễn Văn Linh, Phường Hồng Hà, Thành phố Hà Nội",
+    );
+  });
+
+  it("toNew: passes through an address already in the new system", () => {
+    const r = convertFreeform("Phường Thanh Khê, Đà Nẵng", "new");
+    expect(r.status).toBe("passthrough");
+    expect(r.result).toBe("Phường Thanh Khê, Thành phố Đà Nẵng");
+  });
+
+  it("toNew: flags a split old ward as ambiguous with default + alternatives", () => {
+    const r = convertFreeform("Phường Cống Vị, Ba Đình, Hà Nội", "new");
+    expect(r.status).toBe("ambiguous");
+    expect(r.result).toBeTruthy();
+    expect(r.alternatives && r.alternatives.length).toBeGreaterThan(0);
+  });
+
+  it("toOld: converts a new ward back to its merged old wards (one-to-many)", () => {
+    const r = convertFreeform("Phường Hồng Hà, Hà Nội", "old");
+    expect(r.status).toBe("ambiguous");
+    expect(r.result).toContain("Quận"); // old-system address (has a district)
+    expect(r.alternatives && r.alternatives.length).toBe(11);
+  });
+
+  it("toOld: passes through an address already in the old system", () => {
+    const r = convertFreeform("Phúc Xá, Ba Đình, Hà Nội", "old");
+    expect(r.status).toBe("passthrough");
+    expect(r.result).toBe("Phường Phúc Xá, Quận Ba Đình, Thành phố Hà Nội");
+  });
+
+  it("reports notFound for an unrecognizable address", () => {
+    expect(convertFreeform("một nơi nào đó không có thật", "new").status).toBe(
+      "notFound",
+    );
   });
 });

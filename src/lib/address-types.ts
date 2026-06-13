@@ -125,6 +125,38 @@ export interface OldToNewResult {
   hamletSource?: string;
 }
 
+// Freeform address parsing (paste a full address, detect the unit).
+
+export interface ParseCandidate {
+  /** Which system the recognized ward belongs to. */
+  system: "old" | "new";
+  wardCode: string;
+  /** Human label of the matched administrative path. */
+  label: string;
+  /** Leftover specific address (house number, street) carried through. */
+  street: string;
+}
+
+export interface ParseResult {
+  query: string;
+  /** Ranked interpretations; empty when no ward could be recognized. */
+  candidates: ParseCandidate[];
+}
+
+/** Bulk conversion of one freeform address toward a target system. */
+export interface FreeformConversion {
+  input: string;
+  /** "passthrough" = already in the target system. */
+  status: "converted" | "passthrough" | "ambiguous" | "notFound";
+  /** Recognized administrative path (what the parser matched). */
+  recognized?: string;
+  /** Converted address in the target system (incl. carried house/street). */
+  result?: string;
+  /** Other possible target addresses when the mapping is one-to-many. */
+  alternatives?: string[];
+  note?: string;
+}
+
 export interface NewToOldResult {
   from: NewUnitRef;
   /** Every old ward that was merged into the new ward — always the full list. */
