@@ -17,3 +17,10 @@ export const SOURCE_AUTHORITY = "Cục Thống kê Việt Nam";
 export function absoluteUrl(path: string): string {
   return new URL(path, SITE_URL).toString();
 }
+
+// Analytics & search-console verification. Both read from env and are optional:
+// nothing is rendered until the corresponding value is set.
+/** GA4 measurement id, e.g. "G-XXXXXXXXXX". */
+export const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
+/** Token from the Google Search Console `google-site-verification` meta tag. */
+export const GOOGLE_SITE_VERIFICATION = process.env.GOOGLE_SITE_VERIFICATION;

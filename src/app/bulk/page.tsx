@@ -26,12 +26,6 @@ export default function BulkPage() {
       </header>
 
       <BulkConverter />
-
-      <footer className="text-muted-foreground mt-16 border-t pt-6 text-xs leading-relaxed">
-        Kết quả mang tính tham khảo; dữ liệu thôn/tổ dân phố từ nguồn cộng đồng,
-        các dòng “Cần kiểm tra” là đơn vị cũ bị chia vào nhiều xã mới — hãy đối
-        chiếu trước khi dùng chính thức.
-      </footer>
     </main>
   );
 }

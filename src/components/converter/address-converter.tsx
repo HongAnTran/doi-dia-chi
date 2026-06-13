@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, FileText, MapPin } from "lucide-react";
+import { AlertTriangle, FileText, MapPin, RotateCcw } from "lucide-react";
 
 import { CopyButton } from "@/components/converter/copy-button";
+import { ReportDataDialog } from "@/components/feedback/report-data-dialog";
 import {
   SearchableCombobox,
   type ComboboxOption,
@@ -21,6 +22,8 @@ import type {
   ParseResult,
   UnitBase,
 } from "@/lib/address-types";
+import { track } from "@/lib/analytics";
+import { usePersistentState } from "@/hooks/use-local-storage";
 import { cn } from "@/lib/utils";
 
 /** Joins optional street + hamlet into an address prefix, e.g. "12 Lê Lợi, Thôn A". */
@@ -59,6 +62,9 @@ const MODES: ReadonlyArray<readonly [Mode, string]> = [
   ["newToOld", "Mới → Cũ"],
 ];
 
+const isMode = (v: string | null): v is Mode =>
+  v === "paste" || v === "oldToNew" || v === "newToOld";
+
 interface AddressConverterProps {
   oldProvinces: ProvinceOption[];
   newProvinces: ProvinceOption[];
@@ -69,6 +75,28 @@ export function AddressConverter({
   newProvinces,
 }: AddressConverterProps) {
   const [mode, setMode] = React.useState<Mode>("paste");
+
+  // Restore the active tab from ?tab= on load (the page is statically rendered,
+  // so we read the param on the client after mount rather than via Suspense).
+  React.useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    // Client-only read after mount (the page is static); restoring the tab
+    // here is intentional, not a cascading-render bug.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (isMode(tab)) setMode(tab);
+  }, []);
+
+  // Reflect the tab in the URL (without a navigation) so a reload restores it.
+  function changeMode(next: Mode) {
+    setMode(next);
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", next);
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}?${params}`,
+    );
+  }
 
   return (
     <section
@@ -88,7 +116,7 @@ export function AddressConverter({
             type="button"
             aria-selected={mode === key}
             aria-controls="converter-panel"
-            onClick={() => setMode(key)}
+            onClick={() => changeMode(key)}
             className={cn(
               "min-h-10 flex-1 rounded-[4px] text-sm font-semibold whitespace-nowrap transition-colors",
               mode === key
@@ -107,6 +135,23 @@ export function AddressConverter({
         {mode === "newToOld" && <NewToOldForm provinces={newProvinces} />}
       </div>
     </section>
+  );
+}
+
+/** Top-right "start over" control; renders nothing until there's data to clear. */
+function ResetRow({ show, onClick }: { show: boolean; onClick: () => void }) {
+  if (!show) return null;
+  return (
+    <div className="-mt-1 flex justify-end">
+      <button
+        type="button"
+        onClick={onClick}
+        className="text-muted-foreground hover:text-brand inline-flex items-center gap-1.5 text-[13px] font-medium transition-colors"
+      >
+        <RotateCcw className="size-3.5" />
+        Làm lại từ đầu
+      </button>
+    </div>
   );
 }
 
@@ -131,12 +176,27 @@ function Field({
 }
 
 function OldToNewForm({ provinces }: { provinces: ProvinceOption[] }) {
-  const [provinceCode, setProvinceCode] = React.useState<string | null>(null);
-  const [districtCode, setDistrictCode] = React.useState<string | null>(null);
-  const [wardCode, setWardCode] = React.useState<string | null>(null);
-  const [hamletIdx, setHamletIdx] = React.useState<string | null>(null);
-  const [hamletText, setHamletText] = React.useState("");
-  const [street, setStreet] = React.useState("");
+  const [provinceCode, setProvinceCode] = usePersistentState<string | null>(
+    "ddc:o2n:province",
+    null,
+  );
+  const [districtCode, setDistrictCode] = usePersistentState<string | null>(
+    "ddc:o2n:district",
+    null,
+  );
+  const [wardCode, setWardCode] = usePersistentState<string | null>(
+    "ddc:o2n:ward",
+    null,
+  );
+  const [hamletIdx, setHamletIdx] = usePersistentState<string | null>(
+    "ddc:o2n:hamlet",
+    null,
+  );
+  const [hamletText, setHamletText] = usePersistentState(
+    "ddc:o2n:hamletText",
+    "",
+  );
+  const [street, setStreet] = usePersistentState("ddc:o2n:street", "");
 
   const provinceQuery = useQuery({
     queryKey: ["old-units", provinceCode],
@@ -153,6 +213,16 @@ function OldToNewForm({ provinces }: { provinces: ProvinceOption[] }) {
     staleTime: Infinity,
   });
 
+  React.useEffect(() => {
+    if (resultQuery.data) {
+      track("address_convert", {
+        method: "manual",
+        direction: "old_to_new",
+        ambiguous: resultQuery.data.isAmbiguous,
+      });
+    }
+  }, [resultQuery.data]);
+
   const districts = provinceQuery.data?.districts ?? [];
   const wards = districts.find((d) => d.code === districtCode)?.wards ?? [];
   const hamlets = resultQuery.data?.hamlets ?? [];
@@ -164,8 +234,18 @@ function OldToNewForm({ provinces }: { provinces: ProvinceOption[] }) {
   const hamletName = hasHamletData ? (selectedHamlet?.name ?? "") : hamletText;
   const prefix = addressPrefix(street, hamletName);
 
+  function reset() {
+    setProvinceCode(null);
+    setDistrictCode(null);
+    setWardCode(null);
+    setHamletIdx(null);
+    setHamletText("");
+    setStreet("");
+  }
+
   return (
     <div className="space-y-5">
+      <ResetRow show={provinceCode !== null} onClick={reset} />
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Tỉnh / Thành phố (cũ)">
           <SearchableCombobox
@@ -258,9 +338,12 @@ const PASTE_EXAMPLES: ReadonlyArray<readonly [string, string]> = [
 ];
 
 function PasteAddressForm() {
-  const [text, setText] = React.useState("");
-  const [query, setQuery] = React.useState("");
-  const [candidateIdx, setCandidateIdx] = React.useState(0);
+  const [text, setText] = usePersistentState("ddc:paste:text", "");
+  const [query, setQuery] = usePersistentState("ddc:paste:query", "");
+  const [candidateIdx, setCandidateIdx] = usePersistentState(
+    "ddc:paste:candidate",
+    0,
+  );
 
   const parseQuery = useQuery({
     queryKey: ["parse", query],
@@ -296,6 +379,39 @@ function PasteAddressForm() {
     setQuery(value);
   }
 
+  function reset() {
+    setText("");
+    setQuery("");
+    setCandidateIdx(0);
+  }
+
+  // Failure signal: a query ran but matched no administrative unit.
+  React.useEffect(() => {
+    if (query.trim() && parseQuery.data && candidates.length === 0) {
+      track("address_lookup", { method: "paste", result: "not_found" });
+    }
+  }, [parseQuery.data, candidates.length, query]);
+
+  React.useEffect(() => {
+    if (oldToNew.data) {
+      track("address_convert", {
+        method: "paste",
+        direction: "old_to_new",
+        ambiguous: oldToNew.data.isAmbiguous,
+      });
+    }
+  }, [oldToNew.data]);
+
+  React.useEffect(() => {
+    if (newToOld.data) {
+      track("address_convert", {
+        method: "paste",
+        direction: "new_to_old",
+        sources: newToOld.data.sources.length,
+      });
+    }
+  }, [newToOld.data]);
+
   return (
     <div className="space-y-5">
       <Field
@@ -314,30 +430,22 @@ function PasteAddressForm() {
         />
       </Field>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground mr-1 text-xs font-semibold tracking-[0.04em] uppercase">
-          Thử nhanh
-        </span>
-        {PASTE_EXAMPLES.map(([label, value]) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => submit(value)}
-            className="bg-muted border-border text-foreground/80 hover:border-brand hover:text-brand rounded-full border px-3 py-1 text-[13px] transition-colors"
-          >
-            {label}
-          </button>
-        ))}
+      <div className="flex gap-3">
+        <Button
+          type="button"
+          onClick={() => submit()}
+          disabled={!text.trim()}
+          className="flex-1"
+        >
+          Nhận diện &amp; chuyển đổi
+        </Button>
+        {(text || query) && (
+          <Button type="button" variant="outline" onClick={reset}>
+            <RotateCcw className="size-4" />
+            Làm lại
+          </Button>
+        )}
       </div>
-
-      <Button
-        type="button"
-        onClick={() => submit()}
-        disabled={!text.trim()}
-        className="w-full"
-      >
-        Nhận diện &amp; chuyển đổi
-      </Button>
 
       {query.trim() && candidates.length === 0 && !candidatesLoading && (
         <div className="border-input text-muted-foreground flex items-start gap-3 rounded-md border border-dashed p-5 text-sm">
@@ -357,7 +465,7 @@ function PasteAddressForm() {
       {candidates.length > 0 && chosen && (
         <div className="space-y-5">
           {/* "Bạn dán → Đã làm sạch" panel */}
-          <div className="border-input overflow-hidden rounded-md border">
+          {/* <div className="border-input overflow-hidden rounded-md border">
             <div className="bg-muted border-border flex items-start gap-3 border-b px-5 py-4">
               <span className="text-muted-foreground min-w-[78px] shrink-0 pt-0.5 font-mono text-[11px] tracking-[0.04em] uppercase">
                 Bạn dán
@@ -390,7 +498,7 @@ function PasteAddressForm() {
                 </span>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {candidates.length > 1 && (
             <div className="flex flex-wrap gap-2">
@@ -437,11 +545,23 @@ function PasteAddressForm() {
 }
 
 function NewToOldForm({ provinces }: { provinces: ProvinceOption[] }) {
-  const [provinceCode, setProvinceCode] = React.useState<string | null>(null);
-  const [wardCode, setWardCode] = React.useState<string | null>(null);
-  const [hamletIdx, setHamletIdx] = React.useState<string | null>(null);
-  const [hamletText, setHamletText] = React.useState("");
-  const [street, setStreet] = React.useState("");
+  const [provinceCode, setProvinceCode] = usePersistentState<string | null>(
+    "ddc:n2o:province",
+    null,
+  );
+  const [wardCode, setWardCode] = usePersistentState<string | null>(
+    "ddc:n2o:ward",
+    null,
+  );
+  const [hamletIdx, setHamletIdx] = usePersistentState<string | null>(
+    "ddc:n2o:hamlet",
+    null,
+  );
+  const [hamletText, setHamletText] = usePersistentState(
+    "ddc:n2o:hamletText",
+    "",
+  );
+  const [street, setStreet] = usePersistentState("ddc:n2o:street", "");
 
   const provinceQuery = useQuery({
     queryKey: ["new-units", provinceCode],
@@ -464,14 +584,31 @@ function NewToOldForm({ provinces }: { provinces: ProvinceOption[] }) {
     setHamletText("");
   }
 
+  React.useEffect(() => {
+    if (resultQuery.data) {
+      track("address_convert", {
+        method: "manual",
+        direction: "new_to_old",
+        sources: resultQuery.data.sources.length,
+      });
+    }
+  }, [resultQuery.data]);
+
   const hamlets = resultQuery.data?.hamlets ?? [];
   const hasHamletData = hamlets.length > 0;
   const selectedHamlet =
     hamletIdx !== null ? (hamlets[Number(hamletIdx)] ?? null) : null;
   const hamletName = hasHamletData ? (selectedHamlet?.name ?? "") : hamletText;
 
+  function reset() {
+    setProvinceCode(null);
+    resetWard(null);
+    setStreet("");
+  }
+
   return (
     <div className="space-y-5">
+      <ResetRow show={provinceCode !== null} onClick={reset} />
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Tỉnh / Thành phố (mới)">
           <SearchableCombobox
@@ -560,9 +697,11 @@ function ResultError() {
 /** "Trích lục" result card — official-document framing. */
 function ResultCard({
   title,
+  reportAddress,
   children,
 }: {
   title: string;
+  reportAddress?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -578,6 +717,11 @@ function ResultCard({
         </span>
       </div>
       <div className="p-5">{children}</div>
+      {reportAddress && (
+        <div className="border-border bg-secondary/40 flex justify-end border-t px-5 py-2.5">
+          <ReportDataDialog address={reportAddress} />
+        </div>
+      )}
     </section>
   );
 }
@@ -653,7 +797,10 @@ function OldToNewResultView({
 
     if (match) {
       return (
-        <ResultCard title="Trích lục đối chiếu · Địa chỉ mới">
+        <ResultCard
+          title="Trích lục đối chiếu · Địa chỉ mới"
+          reportAddress={withPrefix(prefix, result.from.fullAddress)}
+        >
           <p className="text-muted-foreground mb-3 text-sm">
             {withPrefix(prefix, result.from.fullAddress)}
           </p>
@@ -684,7 +831,10 @@ function OldToNewResultView({
 
     // Hamlet is in the data but its new ward couldn't be determined safely.
     return (
-      <ResultCard title="Trích lục đối chiếu · Địa chỉ mới">
+      <ResultCard
+        title="Trích lục đối chiếu · Địa chỉ mới"
+        reportAddress={withPrefix(prefix, result.from.fullAddress)}
+      >
         <p className="text-muted-foreground mb-3 text-sm">
           {withPrefix(prefix, result.from.fullAddress)}
         </p>
@@ -710,7 +860,10 @@ function OldToNewResultView({
   }
 
   return (
-    <ResultCard title="Trích lục đối chiếu · Địa chỉ mới">
+    <ResultCard
+      title="Trích lục đối chiếu · Địa chỉ mới"
+      reportAddress={withPrefix(prefix, result.from.fullAddress)}
+    >
       <p className="text-muted-foreground mb-3 text-sm">
         {withPrefix(prefix, result.from.fullAddress)}
       </p>
@@ -775,7 +928,10 @@ function NewToOldResultView({
   const ready = pinned && (single || hamletName.trim());
 
   return (
-    <ResultCard title="Trích lục đối chiếu · Địa chỉ cũ">
+    <ResultCard
+      title="Trích lục đối chiếu · Địa chỉ cũ"
+      reportAddress={withPrefix(prefix, result.from.fullAddress)}
+    >
       <p className="text-muted-foreground mb-3 text-sm">
         {withPrefix(prefix, result.from.fullAddress)}
       </p>

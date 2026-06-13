@@ -4,22 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
-
-const LINKS = [
-  { href: "/", label: "Chuyển đổi" },
-  { href: "/bulk", label: "Hàng loạt" },
-  { href: "/tra-cuu", label: "Tra cứu" },
-  { href: "/blog", label: "Cẩm nang" },
-] as const;
+import { NAV_LINKS, isActive } from "@/components/common/nav-links";
 
 export function SiteNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="ml-auto flex items-center gap-1">
-      {LINKS.map(({ href, label }) => {
-        const active =
-          href === "/" ? pathname === "/" : pathname.startsWith(href);
+    <nav className="ml-auto hidden items-center gap-1 md:flex">
+      {NAV_LINKS.map(({ href, label }) => {
+        const active = isActive(pathname, href);
         return (
           <Link
             key={href}

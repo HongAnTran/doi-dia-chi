@@ -2,9 +2,11 @@
 
 import * as React from "react";
 import * as XLSX from "xlsx";
+import { RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { FreeformConversion } from "@/lib/address-types";
+import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 type Status = FreeformConversion["status"];
@@ -84,6 +86,15 @@ export function BulkConverter() {
     setError("");
   }
 
+  /** Clear everything — file, parsed rows, and results — back to the start. */
+  function clearAll() {
+    setFileName("");
+    setHeaders([]);
+    setRows([]);
+    setAddressCol(0);
+    reset();
+  }
+
   async function loadFile(file: File) {
     reset();
     setFileName(file.name);
@@ -137,6 +148,12 @@ export function BulkConverter() {
       }
       setResultTarget(target);
       setResults(out);
+      track("bulk_convert", {
+        target,
+        rows: out.length,
+        not_found: out.filter((r) => r.status === "notFound").length,
+        ambiguous: out.filter((r) => r.status === "ambiguous").length,
+      });
     } catch {
       setError("Có lỗi khi chuyển đổi. Vui lòng thử lại với file nhỏ hơn.");
     } finally {
@@ -292,6 +309,15 @@ export function BulkConverter() {
           </div>
           <Button type="button" onClick={convert} disabled={busy}>
             {busy ? `Đang chuyển… ${progress}%` : "Chuyển đổi hàng loạt"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={clearAll}
+            disabled={busy}
+          >
+            <RotateCcw className="size-4" />
+            Làm lại từ đầu
           </Button>
         </div>
       )}

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Check, Copy } from "lucide-react";
 
+import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 export function CopyButton({ text }: { text: string }) {
@@ -12,6 +13,7 @@ export function CopyButton({ text }: { text: string }) {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
+      track("copy_result");
       setTimeout(() => setCopied(false), 1500);
     } catch {
       // Clipboard unavailable (non-HTTPS / permission denied) — keep label as is.

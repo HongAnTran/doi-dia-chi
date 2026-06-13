@@ -6,13 +6,20 @@ import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ConfirmProvider } from "@/hooks/use-confirm";
 import { SiteNav } from "@/components/common/site-nav";
+import { MobileBottomNav } from "@/components/common/mobile-bottom-nav";
+import { FooterFeedback } from "@/components/feedback/footer-feedback";
+import { Toaster } from "@/components/ui/sonner";
+import { WebVitals } from "@/components/analytics/web-vitals";
 import Image from "next/image";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import {
   SITE_NAME,
   SITE_URL,
   SOURCE_AUTHORITY,
   SOURCE_RESOLUTION,
   DATA_UPDATED_DISPLAY,
+  GA_ID,
+  GOOGLE_SITE_VERIFICATION,
 } from "@/lib/site-config";
 
 const beVietnamPro = Be_Vietnam_Pro({
@@ -43,6 +50,9 @@ export const metadata: Metadata = {
     url: SITE_URL,
   },
   twitter: { card: "summary_large_image" },
+  ...(GOOGLE_SITE_VERIFICATION
+    ? { verification: { google: GOOGLE_SITE_VERIFICATION } }
+    : {}),
 };
 
 export default function RootLayout({
@@ -53,7 +63,7 @@ export default function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning>
       <body
-        className={`${beVietnamPro.variable} ${ibmPlexMono.variable} antialiased`}
+        className={`${beVietnamPro.variable} ${ibmPlexMono.variable} pb-[calc(env(safe-area-inset-bottom)+3.75rem)] antialiased md:pb-0`}
       >
         <ThemeProvider
           attribute="class"
@@ -72,8 +82,10 @@ export default function RootLayout({
                     <Image
                       src="/logo/doidiachi-seal-lockup.svg"
                       alt="Đổi Địa Chỉ"
-                      width={300}
-                      height={150}
+                      width={372}
+                      height={96}
+                      priority
+                      className="h-auto w-[150px] md:w-[188px]"
                     />
                   </Link>
                   <SiteNav />
@@ -81,9 +93,17 @@ export default function RootLayout({
               </header>
               {children}
               <SiteFooter />
+              <MobileBottomNav />
+              <Toaster />
             </ConfirmProvider>
           </QueryProvider>
         </ThemeProvider>
+        {GA_ID ? (
+          <>
+            <GoogleAnalytics gaId={GA_ID} />
+            <WebVitals />
+          </>
+        ) : null}
       </body>
     </html>
   );
@@ -107,12 +127,15 @@ function SiteFooter() {
             </span>
           </span>
         </div>
-        <div className="text-muted-foreground border-border flex flex-wrap justify-between gap-4 border-t pt-5 text-[13px]">
-          <span>
-            Kết quả mang tính tham khảo — vui lòng đối chiếu văn bản chính thức.
+        <div className="border-border flex flex-col gap-4 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <FooterFeedback />
+          <span className="text-muted-foreground text-[13px]">
+            ĐổiĐịaChỉ.vn
           </span>
-          <span>ĐổiĐịaChỉ.vn</span>
         </div>
+        <p className="text-muted-foreground mt-4 text-[13px]">
+          Kết quả mang tính tham khảo — vui lòng đối chiếu văn bản chính thức.
+        </p>
       </div>
     </footer>
   );
