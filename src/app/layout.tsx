@@ -69,7 +69,12 @@ export default function RootLayout({
                     aria-label="Đổi Địa Chỉ — trang chủ"
                     className="text-foreground inline-flex items-center gap-2"
                   >
-                    <Image src="/logo/doidiachi-seal-lockup.svg" alt="Đổi Địa Chỉ" width={300} height={150} />
+                    <Image
+                      src="/logo/doidiachi-seal-lockup.svg"
+                      alt="Đổi Địa Chỉ"
+                      width={300}
+                      height={150}
+                    />
                   </Link>
                   <SiteNav />
                 </div>
