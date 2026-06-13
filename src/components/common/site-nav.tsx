@@ -16,7 +16,8 @@ export function SiteNav() {
   return (
     <nav className="ml-auto flex items-center gap-1">
       {LINKS.map(({ href, label }) => {
-        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+        const active =
+          href === "/" ? pathname === "/" : pathname.startsWith(href);
         return (
           <Link
             key={href}
@@ -31,7 +32,10 @@ export function SiteNav() {
           >
             {label}
             {active && (
-              <span className="bg-brand mt-1 block h-0.5 rounded-full" aria-hidden />
+              <span
+                className="bg-brand mt-1 block h-0.5 rounded-full"
+                aria-hidden
+              />
             )}
           </Link>
         );

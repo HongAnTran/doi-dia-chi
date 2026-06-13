@@ -101,11 +101,7 @@ export function AddressConverter({
         ))}
       </div>
 
-      <div
-        id="converter-panel"
-        role="tabpanel"
-        aria-labelledby={`tab-${mode}`}
-      >
+      <div id="converter-panel" role="tabpanel" aria-labelledby={`tab-${mode}`}>
         {mode === "paste" && <PasteAddressForm />}
         {mode === "oldToNew" && <OldToNewForm provinces={oldProvinces} />}
         {mode === "newToOld" && <NewToOldForm provinces={newProvinces} />}
@@ -589,7 +585,7 @@ function ResultCard({
 /** Warm-paper warning banner (matches the design's ambiguous banner). */
 function Banner({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-foreground mb-4 rounded-md border border-[#c08a2a] border-l-4 bg-[#f2e8cc] px-5 py-4 text-sm leading-relaxed">
+    <div className="text-foreground mb-4 rounded-md border border-l-4 border-[#c08a2a] bg-[#f2e8cc] px-5 py-4 text-sm leading-relaxed">
       {children}
     </div>
   );
@@ -694,8 +690,8 @@ function OldToNewResultView({
         </p>
         <Banner>
           Chưa xác định được chắc chắn thôn “{selectedHamlet.name}” thuộc xã mới
-          nào — dưới đây là tất cả {result.matches.length} xã mới có thể, hãy đối
-          chiếu thêm.
+          nào — dưới đây là tất cả {result.matches.length} xã mới có thể, hãy
+          đối chiếu thêm.
         </Banner>
         <ul>
           {result.matches.map((m) => (
@@ -734,8 +730,8 @@ function OldToNewResultView({
       )}
       {result.isAmbiguous && residential.length !== 1 && (
         <Banner>
-          Đơn vị cũ này được chia vào {result.matches.length} đơn vị mới. Hãy đối
-          chiếu địa chỉ cụ thể (số nhà, tên đường) để chọn đúng.
+          Đơn vị cũ này được chia vào {result.matches.length} đơn vị mới. Hãy
+          đối chiếu địa chỉ cụ thể (số nhà, tên đường) để chọn đúng.
         </Banner>
       )}
       <ul>

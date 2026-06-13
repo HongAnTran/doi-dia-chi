@@ -25,9 +25,7 @@ export function CopyButton({ text }: { text: string }) {
       aria-label="Sao chép địa chỉ"
       className={cn(
         "inline-flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-[13px] font-semibold transition-colors",
-        copied
-          ? "text-[#2e6b43]"
-          : "text-brand hover:bg-brand/10",
+        copied ? "text-[#2e6b43]" : "text-brand hover:bg-brand/10",
       )}
     >
       {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
