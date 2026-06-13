@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 372 96" width="372" height="96" role="img" aria-label="Đổi Địa Chỉ — 1 màu">
+  <title>Đổi Địa Chỉ — lockup ngang (1 màu)</title>
+  <defs>
+    
+  </defs>
+
+  <g transform="translate(16 16)">
+    <circle cx="32" cy="32" r="27.5" fill="none" stroke="#000000" stroke-width="3"></circle>
+    <circle cx="32" cy="32" r="22.5" fill="none" stroke="#000000" stroke-width="1" opacity="0.55"></circle>
+    <g transform="translate(32 32) scale(0.64) translate(-36.5 -32)">
+      <path fill-rule="evenodd" fill="#000000" d="M16,11 H35 C50,11 57,21 57,32 C57,43 50,53 35,53 H16 Z M28,21 H35 C43,21 47,26 47,32 C47,38 43,43 35,43 H28 Z"></path>
+      <rect x="9" y="28.5" width="22" height="7" rx="1.5" fill="#000000"></rect>
+    </g>
+  </g>
+
+  <text class="wm" x="100" y="51">Đổi Địa Chỉ</text>
+  <text class="sub" x="102" y="71">DOIDIACHI.VN</text>
+</svg>

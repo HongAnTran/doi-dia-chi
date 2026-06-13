@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 const LINKS = [
   { href: "/", label: "Chuyển đổi" },
   { href: "/bulk", label: "Hàng loạt" },
+  { href: "/tra-cuu", label: "Tra cứu" },
+  { href: "/blog", label: "Cẩm nang" },
 ] as const;
 
 export function SiteNav() {

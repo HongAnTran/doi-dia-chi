@@ -1,0 +1,35 @@
+---
+title: "Tỉnh nào sáp nhập, chia tách nhiều nhất sau 01/07/2025?"
+description: "Phân tích từ chính dữ liệu chuyển đổi: tỉnh thành mới nào nhiều phường/xã nhất và nơi nào có nhiều đơn vị cũ bị chia tách nhất."
+date: "2025-07-05"
+updated: "2025-07-05"
+category: "Phân tích dữ liệu"
+draft: false
+faq:
+  - question: "Số phường xã giảm bao nhiêu sau sáp nhập?"
+    answer: "Số đơn vị hành chính cấp xã giảm mạnh sau sáp nhập 01/07/2025 — xem con số cụ thể trong bảng tổng quan, tính trực tiếp từ dữ liệu chuyển đổi hiện hành."
+  - question: "Vì sao một phường xã cũ lại bị chia về nhiều nơi?"
+    answer: "Khi sắp xếp lại địa giới, một phần địa bàn của đơn vị cũ có thể được nhập vào đơn vị mới này, phần còn lại vào đơn vị khác, nên một phường/xã cũ ánh xạ tới nhiều đơn vị mới."
+---
+
+Bài viết này dùng **chính bộ dữ liệu chuyển đổi** mà công cụ đang chạy để trả lời câu hỏi: việc sáp nhập diễn ra mạnh nhất ở đâu? Các con số bên dưới được tính lại mỗi lần cập nhật dữ liệu.
+
+<MergeOverview />
+
+## Tỉnh/thành mới nhiều phường, xã nhất
+
+Sau khi bỏ cấp huyện, mỗi tỉnh/thành trực tiếp quản lý các phường/xã. Đây là những tỉnh/thành có nhiều đơn vị cấp xã nhất:
+
+<TopNewProvinces limit={10} />
+
+## Nơi có nhiều đơn vị cũ bị chia tách nhất
+
+Phần lớn phường/xã cũ được nhập trọn vào một đơn vị mới. Một số ít bị **chia về nhiều đơn vị mới** — đây là các trường hợp cần tra cứu kỹ tới cấp thôn/tổ dân phố. Thống kê theo tỉnh cũ:
+
+<TopSplitProvinces limit={10} />
+
+> Với các đơn vị bị chia tách, hãy dùng [công cụ chuyển đổi](/) và chọn thôn/tổ dân phố để xác định chính xác địa chỉ mới.
+
+## Tra cứu địa bàn cụ thể
+
+Xem chi tiết từng tỉnh trong trang [tra cứu theo tỉnh thành](/tra-cuu), hoặc đọc [toàn cảnh sáp nhập 2025](/blog/tong-quan-sap-nhap-2025).

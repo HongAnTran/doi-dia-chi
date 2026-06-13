@@ -66,13 +66,13 @@ const hamletsByNewWard = new Map(
   ]),
 );
 
-interface OldWardEntry {
+export interface OldWardEntry {
   ward: OldWard;
   district: OldDistrict;
   province: OldProvince;
 }
 
-interface NewWardEntry {
+export interface NewWardEntry {
   ward: NewWard;
   province: NewProvince;
 }
@@ -541,4 +541,105 @@ export function getOldProvince(code: string): OldProvince | null {
 /** Wards of one new province. */
 export function getNewProvince(code: string): NewProvince | null {
   return newUnits.provinces.find((p) => p.code === code) ?? null;
+}
+
+// --- Enumeration & crosswalk (for static SEO pages + sitemap) --------------
+
+export interface OldWardListItem {
+  code: string;
+  name: string;
+  districtName: string;
+  provinceCode: string;
+  provinceName: string;
+}
+
+export interface NewWardListItem {
+  code: string;
+  name: string;
+  provinceCode: string;
+  provinceName: string;
+}
+
+/** Every old ward, flattened — for generateStaticParams and the sitemap. */
+export function getAllOldWards(): OldWardListItem[] {
+  const items: OldWardListItem[] = [];
+  for (const province of oldUnits.provinces) {
+    for (const district of province.districts) {
+      for (const ward of district.wards) {
+        items.push({
+          code: ward.code,
+          name: ward.name,
+          districtName: district.name,
+          provinceCode: province.code,
+          provinceName: province.name,
+        });
+      }
+    }
+  }
+  return items;
+}
+
+/** Every new ward, flattened. */
+export function getAllNewWards(): NewWardListItem[] {
+  const items: NewWardListItem[] = [];
+  for (const province of newUnits.provinces) {
+    for (const ward of province.wards) {
+      items.push({
+        code: ward.code,
+        name: ward.name,
+        provinceCode: province.code,
+        provinceName: province.name,
+      });
+    }
+  }
+  return items;
+}
+
+/** Full index context for one old ward (ward + its district + province). */
+export function getOldWardContext(code: string): OldWardEntry | null {
+  return oldWardIndex.get(code) ?? null;
+}
+
+/** Full index context for one new ward (ward + its province). */
+export function getNewWardContext(code: string): NewWardEntry | null {
+  return newWardIndex.get(code) ?? null;
+}
+
+export interface ProvinceRef {
+  code: string;
+  name: string;
+}
+
+// Province-level crosswalk, derived once from the ward mapping: which new
+// provinces an old province's territory went into, and vice versa.
+const oldProvinceToNew = new Map<string, Map<string, string>>();
+const newProvinceToOld = new Map<string, Map<string, string>>();
+for (const record of mapping) {
+  const oldEntry = oldWardIndex.get(record.oldWardCode);
+  const newEntry = newWardIndex.get(record.newWardCode);
+  if (!oldEntry || !newEntry) continue;
+  const op = oldEntry.province;
+  const np = newEntry.province;
+  let fwd = oldProvinceToNew.get(op.code);
+  if (!fwd) oldProvinceToNew.set(op.code, (fwd = new Map()));
+  fwd.set(np.code, np.name);
+  let bwd = newProvinceToOld.get(np.code);
+  if (!bwd) newProvinceToOld.set(np.code, (bwd = new Map()));
+  bwd.set(op.code, op.name);
+}
+
+/** New provinces an old province's territory was merged into. */
+export function getNewProvincesForOldProvince(
+  oldProvinceCode: string,
+): ProvinceRef[] {
+  const m = oldProvinceToNew.get(oldProvinceCode);
+  return m ? [...m].map(([code, name]) => ({ code, name })) : [];
+}
+
+/** Old provinces whose territory makes up a new province. */
+export function getOldProvincesForNewProvince(
+  newProvinceCode: string,
+): ProvinceRef[] {
+  const m = newProvinceToOld.get(newProvinceCode);
+  return m ? [...m].map(([code, name]) => ({ code, name })) : [];
 }
