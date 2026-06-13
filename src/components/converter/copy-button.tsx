@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Check, Copy } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = React.useState(false);
@@ -19,15 +19,19 @@ export function CopyButton({ text }: { text: string }) {
   }
 
   return (
-    <Button
+    <button
       type="button"
-      variant="ghost"
-      size="sm"
       onClick={copy}
       aria-label="Sao chép địa chỉ"
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-[13px] font-semibold transition-colors",
+        copied
+          ? "text-[#2e6b43]"
+          : "text-brand hover:bg-brand/10",
+      )}
     >
       {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
       {copied ? "Đã chép" : "Chép"}
-    </Button>
+    </button>
   );
 }

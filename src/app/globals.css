@@ -7,6 +7,7 @@
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -50,39 +51,40 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-  --brand: oklch(0.52 0.19 27);
+  /* "Công văn hiện đại": nền giấy ấm · một accent đỏ son · hairline · không shadow */
+  --background: #f3efe7; /* nền giấy ấm */
+  --foreground: #211d17; /* mực gần-đen ấm */
+  --card: #fbfaf6; /* mặt card */
+  --card-foreground: #211d17;
+  --popover: #fbfaf6;
+  --popover-foreground: #211d17;
+  --primary: #ae3526; /* đỏ son — action chính + active */
+  --primary-foreground: #ffffff;
+  --secondary: #ece7dc; /* dải nền phụ */
+  --secondary-foreground: #211d17;
+  --muted: #f7f4ec; /* nền hover/êm */
+  --muted-foreground: #6a6253; /* meta (AA trên giấy) */
+  --accent: #f7f4ec; /* hover surface (giữ trung tính, không đỏ) */
+  --accent-foreground: #211d17;
+  --destructive: #ae3526;
+  --border: #d8d1c2; /* hairline */
+  --input: #c2baa7; /* hairline đậm trên field */
+  --ring: #ae3526;
+  --chart-1: #ae3526;
+  --chart-2: #9a6b12;
+  --chart-3: #2e6b43;
+  --chart-4: #6a6253;
+  --chart-5: #c2baa7;
+  --radius: 0.375rem; /* 6px */
+  --sidebar: #ece7dc;
+  --sidebar-foreground: #211d17;
+  --sidebar-primary: #ae3526;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f7f4ec;
+  --sidebar-accent-foreground: #211d17;
+  --sidebar-border: #d8d1c2;
+  --sidebar-ring: #ae3526;
+  --brand: #ae3526;
 }
 
 .dark {

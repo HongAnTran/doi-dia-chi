@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { AlertTriangle, FileText, MapPin } from "lucide-react";
 
 import { CopyButton } from "@/components/converter/copy-button";
 import {
@@ -36,7 +37,7 @@ function withPrefix(prefix: string, address: string): string {
 
 type ProvinceOption = Pick<UnitBase, "code" | "name" | "nameNormalized">;
 
-type Direction = "oldToNew" | "newToOld";
+type Mode = "paste" | "oldToNew" | "newToOld";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -52,6 +53,12 @@ function toOptions(units: UnitBase[]): ComboboxOption[] {
   }));
 }
 
+const MODES: ReadonlyArray<readonly [Mode, string]> = [
+  ["paste", "Dán địa chỉ"],
+  ["oldToNew", "Cũ → Mới"],
+  ["newToOld", "Mới → Cũ"],
+];
+
 interface AddressConverterProps {
   oldProvinces: ProvinceOption[];
   newProvinces: ProvinceOption[];
@@ -61,90 +68,68 @@ export function AddressConverter({
   oldProvinces,
   newProvinces,
 }: AddressConverterProps) {
-  const [direction, setDirection] = React.useState<Direction>("oldToNew");
+  const [mode, setMode] = React.useState<Mode>("paste");
 
   return (
-    <div>
-      {/* Hero: freeform paste is the primary entry point. */}
-      <section className="border-brand/30 bg-muted/30 rounded-xl border p-5 sm:p-6">
-        <h2 className="text-base font-semibold tracking-tight">
-          Dán địa chỉ bất kỳ để chuyển đổi nhanh
-        </h2>
-        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-          Dán nguyên chuỗi, app tự nhận diện và chuyển đổi. Hiểu cả cách viết
-          tắt và lộn xộn:{" "}
-          <span className="text-foreground">P6, Q1, TP.HCM</span>, gõ không dấu,
-          thừa số nhà…
-        </p>
-        <div className="mt-4">
-          <PasteAddressForm />
-        </div>
-      </section>
-
-      {/* Manual cascade as a secondary option. */}
-      <div className="mt-10">
-        <div className="text-muted-foreground mb-6 flex items-center gap-3 text-xs">
-          <span className="bg-border h-px flex-1" />
-          hoặc chọn thủ công
-          <span className="bg-border h-px flex-1" />
-        </div>
-        <div role="tablist" className="grid grid-cols-2 border-b">
-          {(
-            [
-              ["oldToNew", "Cũ → Mới"],
-              ["newToOld", "Mới → Cũ"],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              id={`tab-${key}`}
-              role="tab"
-              type="button"
-              aria-selected={direction === key}
-              aria-controls="converter-panel"
-              onClick={() => setDirection(key)}
-              className={cn(
-                "-mb-px border-b-2 pb-3 text-sm font-medium transition-colors",
-                direction === key
-                  ? "border-brand text-brand"
-                  : "text-muted-foreground hover:text-foreground border-transparent",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div
-          id="converter-panel"
-          role="tabpanel"
-          aria-labelledby={`tab-${direction}`}
-          className="pt-8"
-        >
-          {direction === "oldToNew" && (
-            <OldToNewForm provinces={oldProvinces} />
-          )}
-          {direction === "newToOld" && (
-            <NewToOldForm provinces={newProvinces} />
-          )}
-        </div>
+    <section
+      aria-label="Công cụ chuyển đổi"
+      className="bg-card border-border rounded-md border p-5 sm:p-6"
+    >
+      {/* Segmented mode toggle — đỏ son when active */}
+      <div
+        role="tablist"
+        className="bg-secondary border-border mb-6 flex w-full gap-0.5 rounded-md border p-[3px]"
+      >
+        {MODES.map(([key, label]) => (
+          <button
+            key={key}
+            id={`tab-${key}`}
+            role="tab"
+            type="button"
+            aria-selected={mode === key}
+            aria-controls="converter-panel"
+            onClick={() => setMode(key)}
+            className={cn(
+              "min-h-10 flex-1 rounded-[4px] text-sm font-semibold whitespace-nowrap transition-colors",
+              mode === key
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground/70 hover:text-foreground",
+            )}
+          >
+            {label}
+          </button>
+        ))}
       </div>
-    </div>
+
+      <div
+        id="converter-panel"
+        role="tabpanel"
+        aria-labelledby={`tab-${mode}`}
+      >
+        {mode === "paste" && <PasteAddressForm />}
+        {mode === "oldToNew" && <OldToNewForm provinces={oldProvinces} />}
+        {mode === "newToOld" && <NewToOldForm provinces={newProvinces} />}
+      </div>
+    </section>
   );
 }
 
 function Field({
   label,
+  hint,
   children,
 }: {
-  label: string;
+  label: React.ReactNode;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-1.5">
-      <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+    <div className="space-y-2">
+      <p className="text-foreground/85 text-[13px] font-semibold tracking-[0.01em]">
         {label}
       </p>
       {children}
+      {hint && <p className="text-muted-foreground text-[13px]">{hint}</p>}
     </div>
   );
 }
@@ -184,74 +169,76 @@ function OldToNewForm({ provinces }: { provinces: ProvinceOption[] }) {
   const prefix = addressPrefix(street, hamletName);
 
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <Field label="Tỉnh / Thành phố (cũ)">
-        <SearchableCombobox
-          options={toOptions(provinces)}
-          value={provinceCode}
-          onChange={(code) => {
-            setProvinceCode(code);
-            setDistrictCode(null);
-            setWardCode(null);
-          }}
-          placeholder="Chọn tỉnh, thành phố"
-        />
-      </Field>
-      <Field label="Quận / Huyện (cũ)">
-        <SearchableCombobox
-          options={toOptions(districts)}
-          value={districtCode}
-          onChange={(code) => {
-            setDistrictCode(code);
-            setWardCode(null);
-          }}
-          placeholder={
-            provinceQuery.isLoading ? "Đang tải..." : "Chọn quận, huyện"
-          }
-          disabled={provinceCode === null || provinceQuery.isLoading}
-        />
-      </Field>
-      <Field label="Phường / Xã (cũ)">
-        <SearchableCombobox
-          options={toOptions(wards)}
-          value={wardCode}
-          onChange={(code) => {
-            setWardCode(code);
-            setHamletIdx(null);
-          }}
-          placeholder="Chọn phường, xã"
-          disabled={districtCode === null}
-        />
-      </Field>
-      <Field label="Thôn / Ấp / Tổ dân phố (cũ) — không bắt buộc">
-        {hasHamletData ? (
+    <div className="space-y-5">
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Tỉnh / Thành phố (cũ)">
           <SearchableCombobox
-            options={hamlets.map((h, i) => ({
-              value: String(i),
-              label: h.name,
-              keywords: h.nameNormalized,
-            }))}
-            value={hamletIdx}
-            onChange={setHamletIdx}
-            placeholder="Chọn thôn để xác định chính xác xã mới"
+            options={toOptions(provinces)}
+            value={provinceCode}
+            onChange={(code) => {
+              setProvinceCode(code);
+              setDistrictCode(null);
+              setWardCode(null);
+            }}
+            placeholder="Chọn tỉnh, thành phố"
           />
-        ) : (
+        </Field>
+        <Field label="Quận / Huyện (cũ)">
+          <SearchableCombobox
+            options={toOptions(districts)}
+            value={districtCode}
+            onChange={(code) => {
+              setDistrictCode(code);
+              setWardCode(null);
+            }}
+            placeholder={
+              provinceQuery.isLoading ? "Đang tải..." : "Chọn quận, huyện"
+            }
+            disabled={provinceCode === null || provinceQuery.isLoading}
+          />
+        </Field>
+        <Field label="Phường / Xã (cũ)">
+          <SearchableCombobox
+            options={toOptions(wards)}
+            value={wardCode}
+            onChange={(code) => {
+              setWardCode(code);
+              setHamletIdx(null);
+            }}
+            placeholder="Chọn phường, xã"
+            disabled={districtCode === null}
+          />
+        </Field>
+        <Field label="Thôn / Ấp / Tổ dân phố (cũ) — không bắt buộc">
+          {hasHamletData ? (
+            <SearchableCombobox
+              options={hamlets.map((h, i) => ({
+                value: String(i),
+                label: h.name,
+                keywords: h.nameNormalized,
+              }))}
+              value={hamletIdx}
+              onChange={setHamletIdx}
+              placeholder="Chọn thôn để xác định chính xác xã mới"
+            />
+          ) : (
+            <Input
+              value={hamletText}
+              onChange={(e) => setHamletText(e.target.value)}
+              placeholder="Nhập thôn/xóm (nếu có)"
+              disabled={wardCode === null}
+            />
+          )}
+        </Field>
+        <Field label="Số nhà, tên đường — không bắt buộc">
           <Input
-            value={hamletText}
-            onChange={(e) => setHamletText(e.target.value)}
-            placeholder="Nhập thôn/xóm (nếu có)"
+            value={street}
+            onChange={(e) => setStreet(e.target.value)}
+            placeholder="VD: 123 Lê Lợi"
             disabled={wardCode === null}
           />
-        )}
-      </Field>
-      <Field label="Số nhà, tên đường — không bắt buộc">
-        <Input
-          value={street}
-          onChange={(e) => setStreet(e.target.value)}
-          placeholder="VD: 123 Lê Lợi"
-          disabled={wardCode === null}
-        />
-      </Field>
+        </Field>
+      </div>
 
       {resultQuery.isLoading && <ResultPending />}
       {resultQuery.isError && <ResultError />}
@@ -266,6 +253,13 @@ function OldToNewForm({ provinces }: { provinces: ProvinceOption[] }) {
     </div>
   );
 }
+
+const PASTE_EXAMPLES: ReadonlyArray<readonly [string, string]> = [
+  ["Viết tắt + số nhà", "123/4 Lê Lợi, P.Bến Nghé, Q1, TP.HCM"],
+  ["Gõ không dấu", "p vu ninh tp bac ninh"],
+  ["Phường đánh số", "so 5 p.6 q3 tphcm"],
+  ["Ca cần chọn thôn", "xã hòa tiến, hòa vang, đà nẵng"],
+];
 
 function PasteAddressForm() {
   const [text, setText] = React.useState("");
@@ -300,47 +294,106 @@ function PasteAddressForm() {
     staleTime: Infinity,
   });
 
-  function submit() {
+  function submit(value: string = text) {
     setCandidateIdx(0);
-    setQuery(text);
+    setText(value);
+    setQuery(value);
   }
 
   return (
-    <div className="space-y-4">
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
-        }}
-        rows={2}
-        placeholder="VD: 123 Nguyễn Văn Linh, Thanh Khê, Đà Nẵng"
-        className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-3"
-      />
-      <Button type="button" onClick={submit} disabled={!text.trim()}>
+    <div className="space-y-5">
+      <Field
+        label="Dán nguyên địa chỉ — gõ kiểu gì cũng được"
+        hint="Hiểu viết tắt (P6, Q1, TP.HCM), gõ không dấu, và tự bỏ số nhà / tên đường."
+      >
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
+          }}
+          rows={2}
+          placeholder="VD: 123/4 Lê Lợi, P.Bến Nghé, Q1, TP.HCM"
+          className="border-input bg-card focus-visible:border-ring focus-visible:ring-ring/40 min-h-[60px] w-full resize-y rounded-md border px-4 py-3 text-base leading-relaxed outline-none focus-visible:ring-3"
+        />
+      </Field>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground mr-1 text-xs font-semibold tracking-[0.04em] uppercase">
+          Thử nhanh
+        </span>
+        {PASTE_EXAMPLES.map(([label, value]) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => submit(value)}
+            className="bg-muted border-border text-foreground/80 hover:border-brand hover:text-brand rounded-full border px-3 py-1 text-[13px] transition-colors"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <Button
+        type="button"
+        onClick={() => submit()}
+        disabled={!text.trim()}
+        className="w-full"
+      >
         Nhận diện &amp; chuyển đổi
       </Button>
 
       {query.trim() && candidates.length === 0 && !candidatesLoading && (
-        <p className="text-muted-foreground border-t pt-4 text-sm">
-          Không nhận diện được phường/xã trong địa chỉ. Hãy kiểm tra lại, hoặc
-          dùng tab “Cũ → Mới” / “Mới → Cũ” để chọn thủ công.
-        </p>
+        <div className="border-input text-muted-foreground flex items-start gap-3 rounded-md border border-dashed p-5 text-sm">
+          <AlertTriangle className="text-brand mt-0.5 size-5 shrink-0" />
+          <div>
+            <p className="text-foreground font-semibold">
+              Chưa nhận diện được đơn vị hành chính
+            </p>
+            <p className="mt-1 leading-relaxed">
+              Hãy kiểm tra lại, hoặc dùng tab “Cũ → Mới” / “Mới → Cũ” để chọn
+              thủ công.
+            </p>
+          </div>
+        </div>
       )}
 
       {candidates.length > 0 && chosen && (
-        <div className="space-y-4">
-          <div>
-            <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-              Nhận diện được{" "}
-              {chosen.system === "old" ? "(địa chỉ cũ)" : "(địa chỉ mới)"}
-            </p>
-            <p className="mt-1 text-sm">
-              {chosen.street && (
-                <span className="text-muted-foreground">{chosen.street}, </span>
-              )}
-              {chosen.label}
-            </p>
+        <div className="space-y-5">
+          {/* "Bạn dán → Đã làm sạch" panel */}
+          <div className="border-input overflow-hidden rounded-md border">
+            <div className="bg-muted border-border flex items-start gap-3 border-b px-5 py-4">
+              <span className="text-muted-foreground min-w-[78px] shrink-0 pt-0.5 font-mono text-[11px] tracking-[0.04em] uppercase">
+                Bạn dán
+              </span>
+              <span className="text-muted-foreground text-[15px]">
+                {query.trim()}
+              </span>
+            </div>
+            <div className="flex flex-col gap-3 px-5 py-4">
+              <span className="flex items-center gap-2 text-xs font-semibold tracking-[0.04em] text-[#2e6b43] uppercase">
+                Đã làm sạch &amp; nhận diện ·{" "}
+                {chosen.system === "old" ? "địa chỉ cũ" : "địa chỉ mới"}
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {chosen.street && (
+                  <span className="bg-card border-input inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                    <span className="text-muted-foreground font-mono text-[11px] uppercase">
+                      Đã bỏ
+                    </span>
+                    <span className="text-muted-foreground line-through decoration-[#e6c4bd]">
+                      {chosen.street}
+                    </span>
+                  </span>
+                )}
+                <span className="bg-card border-input inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                  <span className="text-muted-foreground font-mono text-[11px] uppercase">
+                    Đơn vị
+                  </span>
+                  {chosen.label}
+                </span>
+              </div>
+            </div>
           </div>
 
           {candidates.length > 1 && (
@@ -351,7 +404,7 @@ function PasteAddressForm() {
                   type="button"
                   onClick={() => setCandidateIdx(i)}
                   className={cn(
-                    "rounded-lg border px-2.5 py-1 text-xs transition-colors",
+                    "rounded-full border px-3 py-1 text-[13px] transition-colors",
                     i === candidateIdx
                       ? "border-brand text-brand"
                       : "text-muted-foreground hover:text-foreground border-border",
@@ -422,58 +475,60 @@ function NewToOldForm({ provinces }: { provinces: ProvinceOption[] }) {
   const hamletName = hasHamletData ? (selectedHamlet?.name ?? "") : hamletText;
 
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <Field label="Tỉnh / Thành phố (mới)">
-        <SearchableCombobox
-          options={toOptions(provinces)}
-          value={provinceCode}
-          onChange={(code) => {
-            setProvinceCode(code);
-            resetWard(null);
-          }}
-          placeholder="Chọn tỉnh, thành phố"
-        />
-      </Field>
-      <Field label="Phường / Xã (mới)">
-        <SearchableCombobox
-          options={toOptions(provinceQuery.data?.wards ?? [])}
-          value={wardCode}
-          onChange={resetWard}
-          placeholder={
-            provinceQuery.isLoading ? "Đang tải..." : "Chọn phường, xã"
-          }
-          disabled={provinceCode === null || provinceQuery.isLoading}
-        />
-      </Field>
-      <Field label="Thôn / Ấp / Tổ dân phố (mới) — bắt buộc">
-        {hasHamletData ? (
+    <div className="space-y-5">
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Tỉnh / Thành phố (mới)">
           <SearchableCombobox
-            options={hamlets.map((h, i) => ({
-              value: String(i),
-              label: h.name,
-              keywords: h.nameNormalized,
-            }))}
-            value={hamletIdx}
-            onChange={setHamletIdx}
-            placeholder="Chọn thôn/xóm trong địa chỉ của bạn"
+            options={toOptions(provinces)}
+            value={provinceCode}
+            onChange={(code) => {
+              setProvinceCode(code);
+              resetWard(null);
+            }}
+            placeholder="Chọn tỉnh, thành phố"
           />
-        ) : (
+        </Field>
+        <Field label="Phường / Xã (mới)">
+          <SearchableCombobox
+            options={toOptions(provinceQuery.data?.wards ?? [])}
+            value={wardCode}
+            onChange={resetWard}
+            placeholder={
+              provinceQuery.isLoading ? "Đang tải..." : "Chọn phường, xã"
+            }
+            disabled={provinceCode === null || provinceQuery.isLoading}
+          />
+        </Field>
+        <Field label="Thôn / Ấp / Tổ dân phố (mới) — bắt buộc">
+          {hasHamletData ? (
+            <SearchableCombobox
+              options={hamlets.map((h, i) => ({
+                value: String(i),
+                label: h.name,
+                keywords: h.nameNormalized,
+              }))}
+              value={hamletIdx}
+              onChange={setHamletIdx}
+              placeholder="Chọn thôn/xóm trong địa chỉ của bạn"
+            />
+          ) : (
+            <Input
+              value={hamletText}
+              onChange={(e) => setHamletText(e.target.value)}
+              placeholder="Nhập thôn/xóm trong địa chỉ của bạn"
+              disabled={wardCode === null}
+            />
+          )}
+        </Field>
+        <Field label="Số nhà, tên đường — không bắt buộc">
           <Input
-            value={hamletText}
-            onChange={(e) => setHamletText(e.target.value)}
-            placeholder="Nhập thôn/xóm trong địa chỉ của bạn"
+            value={street}
+            onChange={(e) => setStreet(e.target.value)}
+            placeholder="VD: 123 Lê Lợi"
             disabled={wardCode === null}
           />
-        )}
-      </Field>
-      <Field label="Số nhà, tên đường — không bắt buộc">
-        <Input
-          value={street}
-          onChange={(e) => setStreet(e.target.value)}
-          placeholder="VD: 123 Lê Lợi"
-          disabled={wardCode === null}
-        />
-      </Field>
+        </Field>
+      </div>
 
       {resultQuery.isLoading && <ResultPending />}
       {resultQuery.isError && <ResultError />}
@@ -490,7 +545,12 @@ function NewToOldForm({ provinces }: { provinces: ProvinceOption[] }) {
 }
 
 function ResultPending() {
-  return <p className="text-muted-foreground text-sm">Đang tra cứu...</p>;
+  return (
+    <div className="text-muted-foreground flex items-center justify-center gap-3 py-10 text-sm">
+      <span className="border-input border-t-brand size-[18px] animate-spin rounded-full border-2" />
+      Đang đối chiếu dữ liệu…
+    </div>
+  );
 }
 
 function ResultError() {
@@ -501,7 +561,8 @@ function ResultError() {
   );
 }
 
-function ResultSection({
+/** "Trích lục" result card — official-document framing. */
+function ResultCard({
   title,
   children,
 }: {
@@ -509,21 +570,51 @@ function ResultSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-t pt-6">
-      <h2 className="text-muted-foreground mb-4 text-xs font-medium tracking-wide uppercase">
-        {title}
-      </h2>
-      {children}
+    <section className="border-input overflow-hidden rounded-md border">
+      <div className="bg-secondary border-border flex items-center gap-3 border-b px-5 py-3">
+        <FileText className="text-foreground/70 size-[18px]" />
+        <span className="text-foreground/85 text-[13px] font-semibold">
+          {title}
+        </span>
+        <span className="bg-muted border-border text-muted-foreground ml-auto inline-flex items-center gap-2 rounded border px-2 py-0.5 font-mono text-[11px] tracking-[0.02em] whitespace-nowrap">
+          <span className="bg-brand inline-block size-[5px] rounded-full" />
+          NQ 202/2025/QH15
+        </span>
+      </div>
+      <div className="p-5">{children}</div>
     </section>
   );
 }
 
-function AddressRow({ address, note }: { address: string; note?: string }) {
+/** Warm-paper warning banner (matches the design's ambiguous banner). */
+function Banner({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start justify-between gap-3 border-b py-3 last:border-b-0">
+    <div className="text-foreground mb-4 rounded-md border border-[#c08a2a] border-l-4 bg-[#f2e8cc] px-5 py-4 text-sm leading-relaxed">
+      {children}
+    </div>
+  );
+}
+
+function AddressRow({
+  address,
+  code,
+  note,
+}: {
+  address: string;
+  code?: string;
+  note?: string;
+}) {
+  return (
+    <li className="border-border flex items-start justify-between gap-3 border-b py-3 last:border-b-0">
       <div className="min-w-0">
-        <p className="text-sm leading-relaxed">{address}</p>
-        {note && <p className="text-muted-foreground mt-0.5 text-xs">{note}</p>}
+        <p className="text-[15px] leading-relaxed">{address}</p>
+        {code && (
+          <p className="text-muted-foreground mt-1 flex items-center gap-1.5 font-mono text-xs">
+            <MapPin className="text-brand size-3.5" />
+            Mã ĐVHC <span>{code}</span>
+          </p>
+        )}
+        {note && <p className="text-muted-foreground mt-1 text-xs">{note}</p>}
       </div>
       <CopyButton text={address} />
     </li>
@@ -566,13 +657,14 @@ function OldToNewResultView({
 
     if (match) {
       return (
-        <ResultSection title="Địa chỉ mới">
+        <ResultCard title="Trích lục đối chiếu · Địa chỉ mới">
           <p className="text-muted-foreground mb-3 text-sm">
             {withPrefix(prefix, result.from.fullAddress)}
           </p>
           <ul>
             <AddressRow
               address={withPrefix(prefix, match.fullAddress)}
+              code={match.wardCode}
               note={
                 result.isAmbiguous
                   ? `${selectedHamlet.name} thuộc đơn vị mới này`
@@ -590,73 +682,75 @@ function OldToNewResultView({
               có thể
             </button>
           )}
-        </ResultSection>
+        </ResultCard>
       );
     }
 
     // Hamlet is in the data but its new ward couldn't be determined safely.
     return (
-      <ResultSection title="Địa chỉ mới">
+      <ResultCard title="Trích lục đối chiếu · Địa chỉ mới">
         <p className="text-muted-foreground mb-3 text-sm">
           {withPrefix(prefix, result.from.fullAddress)}
         </p>
-        <p className="border-brand/40 text-brand mb-3 border-l-2 pl-3 text-sm">
+        <Banner>
           Chưa xác định được chắc chắn thôn “{selectedHamlet.name}” thuộc xã mới
-          nào — dưới đây là tất cả {result.matches.length} xã mới có thể, hãy
-          đối chiếu thêm.
-        </p>
+          nào — dưới đây là tất cả {result.matches.length} xã mới có thể, hãy đối
+          chiếu thêm.
+        </Banner>
         <ul>
           {result.matches.map((m) => (
             <AddressRow
               key={m.wardCode}
               address={withPrefix(prefix, m.fullAddress)}
+              code={m.wardCode}
               note={[m.note, m.transfer && NEW_TRANSFER_LABELS[m.transfer]]
                 .filter(Boolean)
                 .join(" — ")}
             />
           ))}
         </ul>
-      </ResultSection>
+      </ResultCard>
     );
   }
 
   return (
-    <ResultSection title="Địa chỉ mới">
+    <ResultCard title="Trích lục đối chiếu · Địa chỉ mới">
       <p className="text-muted-foreground mb-3 text-sm">
         {withPrefix(prefix, result.from.fullAddress)}
       </p>
       {result.isAmbiguous && result.hamlets && result.hamlets.length > 0 && (
-        <p className="text-muted-foreground mb-3 border-l-2 pl-3 text-sm">
+        <p className="text-muted-foreground border-border mb-3 border-l-2 pl-3 text-sm">
           Xã này có dữ liệu thôn: chọn thôn ở ô trên để ra đúng một kết quả.
           Không thấy thôn của bạn? Danh sách dưới đây là tất cả{" "}
           {result.matches.length} xã mới có thể.
         </p>
       )}
       {result.isAmbiguous && residential.length === 1 && (
-        <p className="text-muted-foreground mb-3 border-l-2 pl-3 text-sm">
+        <p className="text-muted-foreground border-border mb-3 border-l-2 pl-3 text-sm">
           Về dân cư, địa chỉ mới là {residential[0].wardName} — các đơn vị còn
           lại chỉ nhận phần diện tích không có dân cư (theo bảng chuyển đổi của
           Cục Thống kê).
         </p>
       )}
       {result.isAmbiguous && residential.length !== 1 && (
-        <p className="border-brand/40 text-brand mb-3 border-l-2 pl-3 text-sm">
-          Đơn vị cũ này được chia vào {result.matches.length} đơn vị mới. Hãy
-          đối chiếu địa chỉ cụ thể (số nhà, tên đường) để chọn đúng.
-        </p>
+        <Banner>
+          Đơn vị cũ này được chia vào {result.matches.length} đơn vị mới. Hãy đối
+          chiếu địa chỉ cụ thể (số nhà, tên đường) để chọn đúng.
+        </Banner>
       )}
       <ul>
         {result.matches.map((m) => (
           <AddressRow
             key={m.wardCode}
             address={withPrefix(prefix, m.fullAddress)}
+            code={m.wardCode}
             note={[m.note, m.transfer && NEW_TRANSFER_LABELS[m.transfer]]
               .filter(Boolean)
               .join(" — ")}
           />
         ))}
       </ul>
-    </ResultSection>
+    </ResultCard>
   );
 }
 
@@ -685,24 +779,27 @@ function NewToOldResultView({
   const ready = pinned && (single || hamletName.trim());
 
   return (
-    <ResultSection title="Địa chỉ cũ">
+    <ResultCard title="Trích lục đối chiếu · Địa chỉ cũ">
       <p className="text-muted-foreground mb-3 text-sm">
         {withPrefix(prefix, result.from.fullAddress)}
       </p>
       {ready ? (
         <ul>
-          <AddressRow address={withPrefix(prefix, pinned!.fullAddress)} />
+          <AddressRow
+            address={withPrefix(prefix, pinned!.fullAddress)}
+            code={pinned!.wardCode}
+          />
         </ul>
       ) : (
-        <p className="border-brand/40 text-brand mb-3 border-l-2 pl-3 text-sm">
+        <Banner>
           {result.hamlets && result.hamlets.length > 0
             ? "Chọn thôn/xóm để ra địa chỉ cũ chính xác (số nhà, tên đường không bắt buộc)."
             : "Xã mới này chưa có dữ liệu thôn — xem danh sách các xã cũ thành phần bên dưới để đối chiếu."}
-        </p>
+        </Banner>
       )}
 
       <div className="mt-6">
-        <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
+        <h3 className="text-muted-foreground mb-2 font-mono text-[11px] font-semibold tracking-[0.04em] uppercase">
           {single
             ? "Đơn vị cũ tương ứng"
             : `Gồm ${result.sources.length} đơn vị cũ (tham khảo)`}
@@ -712,6 +809,7 @@ function NewToOldResultView({
             <AddressRow
               key={s.wardCode}
               address={s.fullAddress}
+              code={s.wardCode}
               note={[
                 s.transfer && OLD_TRANSFER_LABELS[s.transfer],
                 s.hamletNames &&
@@ -723,6 +821,6 @@ function NewToOldResultView({
           ))}
         </ul>
       </div>
-    </ResultSection>
+    </ResultCard>
   );
 }
