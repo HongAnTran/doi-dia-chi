@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "prebuild": "rm -rf .next/standalone",
+    "postbuild": "cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/static",
+    "prod:build": "pnpm prebuild && pnpm build && pnpm postbuild",
     "start": "next start -p 3005",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

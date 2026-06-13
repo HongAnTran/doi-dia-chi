@@ -6,11 +6,7 @@ import { Breadcrumbs } from "@/components/common/breadcrumbs";
 import { DataFreshness } from "@/components/common/data-freshness";
 import { Faq, type FaqItem } from "@/components/seo/faq";
 import { JsonLd } from "@/components/seo/json-ld";
-import {
-  convertNewToOld,
-  getAllNewWards,
-  getNewWardContext,
-} from "@/lib/converter";
+import { convertNewToOld, getNewWardContext } from "@/lib/converter";
 import {
   DATA_UPDATED_DISPLAY,
   SOURCE_RESOLUTION,
@@ -18,10 +14,13 @@ import {
 } from "@/lib/site-config";
 import { buildSlug, codeFromSlug } from "@/lib/slug";
 
-export const dynamicParams = false;
+// Render on-demand + cache vĩnh viễn: dữ liệu tĩnh, chỉ đổi khi redeploy.
+// Build không pre-render ~3.3k trang; trang sinh ra ở request đầu rồi cache lại.
+export const dynamicParams = true;
+export const revalidate = false;
 
 export function generateStaticParams() {
-  return getAllNewWards().map((w) => ({ slug: buildSlug(w.name, w.code) }));
+  return [];
 }
 
 function getData(slug: string) {
