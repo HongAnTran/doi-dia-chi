@@ -4,6 +4,7 @@
 // either is missing we throw so the route can return a clear error instead of
 // silently dropping the message.
 import { Telegraf } from "telegraf";
+import { SocksProxyAgent } from "socks-proxy-agent";
 
 /** Escapes text for Telegram HTML parse mode (only &, <, > are special). */
 export function escapeHtml(text: string): string {
@@ -18,7 +19,11 @@ export function escapeHtml(text: string): string {
 let bot: Telegraf | null = null;
 
 function getBot(token: string): Telegraf {
-  if (!bot) bot = new Telegraf(token);
+  if (!bot) {
+    bot = new Telegraf(token, {
+      telegram: { agent: new SocksProxyAgent("socks5h://127.0.0.1:40000") },
+    });
+  }
   return bot;
 }
 
