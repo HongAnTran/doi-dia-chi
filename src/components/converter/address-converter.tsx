@@ -455,8 +455,7 @@ function PasteAddressForm() {
               title={value}
               className="border-input bg-card hover:bg-muted/40 text-foreground/80 rounded-full border px-3 py-1 text-left text-[13px] transition-colors"
             >
-              <span className="text-muted-foreground">{label}:</span>{" "}
-              {value}
+              <span className="text-muted-foreground">{label}:</span> {value}
             </button>
           ))}
         </div>
