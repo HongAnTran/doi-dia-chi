@@ -283,6 +283,51 @@ function provinceKeyVariants(part: string): string[] {
   return [...variants];
 }
 
+const PROVINCE_ALIAS_KEYS = new Set(Object.keys(PROVINCE_ALIASES));
+const TWO_WORD_PREFIXES = new Set(["thanh pho", "thi xa", "thi tran"]);
+// "phường/quận/huyện/xã" + bare letters split only when a number follows, so
+// names like "Phương"/"Huyền" or "quán …" aren't mistaken for unit prefixes.
+const NUMBERED_FULL_PREFIXES = new Set(["phuong", "quan", "huyen", "xa"]);
+const SINGLE_LETTER_UNITS = new Set(["p", "f", "q", "h", "x"]);
+const ABBR_CITY_PREFIXES = new Set(["tp", "tx"]);
+const GLUED_NUMBERED_UNIT = /^(phuong|quan|huyen|xa|p|f|q|h|x)\.?\d+[a-z]?$/;
+const NUMERIC_UNIT = /^\d+[a-z]?$/;
+
+/**
+ * Splits one fragment (a comma-part, or a whole comma-less address) into
+ * administrative sub-tokens by inserting a boundary before each recognizable
+ * unit marker — so "85/34f lò siêu p16 q11 hcm" becomes
+ * ["85/34f lò siêu", "p16", "q11", "hcm"] without needing commas.
+ * A marker at the very start never splits (the leading street stays intact).
+ */
+function segmentFreeformPart(part: string): string[] {
+  const words = part.split(/\s+/).filter(Boolean);
+  const segments: string[] = [];
+  let current: string[] = [];
+  const flush = () => {
+    if (current.length > 0) segments.push(current.join(" "));
+    current = [];
+  };
+  for (let i = 0; i < words.length; i++) {
+    const w = normalizeVietnamese(words[i]);
+    const next = i + 1 < words.length ? normalizeVietnamese(words[i + 1]) : "";
+    const two = next ? `${w} ${next}` : "";
+    const numericNext = NUMERIC_UNIT.test(next);
+    const isMarker =
+      GLUED_NUMBERED_UNIT.test(w) ||
+      PROVINCE_ALIAS_KEYS.has(w) ||
+      (two !== "" && PROVINCE_ALIAS_KEYS.has(two)) ||
+      TWO_WORD_PREFIXES.has(two) ||
+      (next !== "" && ABBR_CITY_PREFIXES.has(w)) ||
+      (numericNext &&
+        (NUMBERED_FULL_PREFIXES.has(w) || SINGLE_LETTER_UNITS.has(w)));
+    if (isMarker) flush();
+    current.push(words[i]);
+  }
+  flush();
+  return segments;
+}
+
 const newProvincesByKey = new Map<string, NewProvinceIndex>();
 for (const province of newUnits.provinces) {
   const wardsByKey = new Map<string, NewWard[]>();
@@ -305,6 +350,7 @@ for (const province of newUnits.provinces) {
 export function parseAddress(input: string): ParseResult {
   const parts = input
     .split(",")
+    .flatMap(segmentFreeformPart)
     .map((p) => p.trim())
     .filter(Boolean);
   const infos = parts.map(classifyToken);

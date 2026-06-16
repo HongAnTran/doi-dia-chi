@@ -253,6 +253,19 @@ describe("parseAddress", () => {
     }
   });
 
+  it("segments comma-less addresses at glued/spelled-out unit markers", () => {
+    for (const q of [
+      "85/34f lò siêu p16 q11 hcm",
+      "85/34f lò siêu phường 16 quận 11 tphcm",
+      "85/34f lò siêu p 16 q 11 thành phố hồ chí minh",
+    ]) {
+      const top = parseAddress(q).candidates[0];
+      expect(top.system).toBe("old");
+      expect(top.label).toBe("Phường 16, Quận 11, Thành phố Hồ Chí Minh");
+      expect(top.street).toBe("85/34f lò siêu");
+    }
+  });
+
   it("uses prefixes to keep numbered ward vs district distinct, no cross-district guess", () => {
     // Quận 3 has no "Phường 6" (merged), so don't fabricate one elsewhere.
     expect(parseAddress("P6, Quận 3, TPHCM").candidates).toHaveLength(0);
