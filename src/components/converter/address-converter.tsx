@@ -24,6 +24,7 @@ import type {
   UnitBase,
 } from "@/lib/address-types";
 import { track } from "@/lib/analytics";
+import { ADDRESS_EXAMPLES } from "@/lib/address-examples";
 import { usePersistentState } from "@/hooks/use-local-storage";
 import { cn } from "@/lib/utils";
 
@@ -331,13 +332,6 @@ function OldToNewForm({ provinces }: { provinces: ProvinceOption[] }) {
   );
 }
 
-const PASTE_EXAMPLES: ReadonlyArray<readonly [string, string]> = [
-  ["Viết tắt + số nhà", "123/4 Lê Lợi, P.Bến Nghé, Q1, TP.HCM"],
-  ["Gõ không dấu", "p vu ninh tp bac ninh"],
-  ["Phường đánh số", "so 5 p.6 q3 tphcm"],
-  ["Ca cần chọn thôn", "xã hòa tiến, hòa vang, đà nẵng"],
-];
-
 function PasteAddressForm() {
   const [text, setText] = usePersistentState("ddc:paste:text", "");
   const [query, setQuery] = usePersistentState("ddc:paste:query", "");
@@ -446,6 +440,26 @@ function PasteAddressForm() {
             Làm lại
           </Button>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-muted-foreground text-[13px]">
+          Bấm thử một ví dụ — kiểu dữ liệu nào cũng nhận:
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {ADDRESS_EXAMPLES.map(([label, value]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => submit(value)}
+              title={value}
+              className="border-input bg-card hover:bg-muted/40 text-foreground/80 rounded-full border px-3 py-1 text-left text-[13px] transition-colors"
+            >
+              <span className="text-muted-foreground">{label}:</span>{" "}
+              {value}
+            </button>
+          ))}
+        </div>
       </div>
 
       {query.trim() && candidates.length === 0 && !candidatesLoading && (

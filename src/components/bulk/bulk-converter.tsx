@@ -5,6 +5,7 @@ import * as XLSX from "xlsx";
 import { RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ADDRESS_EXAMPLES } from "@/lib/address-examples";
 import type { FreeformConversion } from "@/lib/address-types";
 import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
@@ -255,6 +256,20 @@ export function BulkConverter() {
         . Chuyển đổi theo chiều bạn chọn (Cũ → Mới hoặc Mới → Cũ); hiểu cả viết
         tắt (P6, Q1, TP.HCM) và gõ không dấu như khi chuyển từng địa chỉ.
       </p>
+
+      <div className="-mt-3 space-y-1.5">
+        <p className="text-muted-foreground text-xs">
+          Cột địa chỉ gõ kiểu nào cũng nhận, ví dụ:
+        </p>
+        <ul className="text-muted-foreground space-y-1 text-xs">
+          {ADDRESS_EXAMPLES.map(([label, value]) => (
+            <li key={value}>
+              <span className="text-foreground/70">{label}:</span>{" "}
+              <span className="text-foreground/90">{value}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       {error && <p className="text-destructive text-sm">{error}</p>}
 
