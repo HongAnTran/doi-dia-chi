@@ -30,13 +30,13 @@ cấp ward. Quận/huyện ở hệ cũ chỉ dùng để phân biệt và làm 
 Dữ liệu được sinh sẵn (build-time), nạp một lần vào bộ nhớ khi server khởi động — **không có
 DB runtime**.
 
-| File (`src/data/`)        | Nội dung                                                        |
-| ------------------------- | -------------------------------------------------------------- |
-| `old-units.json`          | 63 tỉnh → districts → wards (trước 2025‑07‑01)                  |
-| `new-units.json`          | 34 tỉnh → wards (sau sáp nhập)                                  |
-| `mapping.json`            | Mảng phẳng `[{ oldWardCode, newWardCode, note?, transfer? }]`   |
-| `hamlets.json`            | old→new: thôn/ấp/tổ dân phố của ward cũ                         |
-| `new-ward-hamlets.json`   | new→old: thôn của ward mới, ánh xạ ngược về ward cũ            |
+| File (`src/data/`)      | Nội dung                                                      |
+| ----------------------- | ------------------------------------------------------------- |
+| `old-units.json`        | 63 tỉnh → districts → wards (trước 2025‑07‑01)                |
+| `new-units.json`        | 34 tỉnh → wards (sau sáp nhập)                                |
+| `mapping.json`          | Mảng phẳng `[{ oldWardCode, newWardCode, note?, transfer? }]` |
+| `hamlets.json`          | old→new: thôn/ấp/tổ dân phố của ward cũ                       |
+| `new-ward-hamlets.json` | new→old: thôn của ward mới, ánh xạ ngược về ward cũ           |
 
 **Sinh dữ liệu:**
 
@@ -79,12 +79,12 @@ Khi có dữ liệu, thôn dùng để **gỡ mơ hồ chính xác**: với ward
 
 ## 4. Bản đồ module
 
-| File                          | Vai trò                                                                |
-| ----------------------------- | ---------------------------------------------------------------------- |
-| `src/lib/address-types.ts`    | Toàn bộ type/interface (schema dữ liệu + kết quả converter).           |
-| `src/lib/normalize.ts`        | `normalizeVietnamese`, `stripUnitPrefix` — chuẩn hoá để so khớp.       |
-| `src/lib/converter.ts`        | Nạp dữ liệu, dựng index, và mọi hàm chuyển đổi/parse.                  |
-| `src/app/api/**`              | Các route HTTP mỏng, chỉ gọi vào `converter.ts`.                       |
+| File                       | Vai trò                                                          |
+| -------------------------- | ---------------------------------------------------------------- |
+| `src/lib/address-types.ts` | Toàn bộ type/interface (schema dữ liệu + kết quả converter).     |
+| `src/lib/normalize.ts`     | `normalizeVietnamese`, `stripUnitPrefix` — chuẩn hoá để so khớp. |
+| `src/lib/converter.ts`     | Nạp dữ liệu, dựng index, và mọi hàm chuyển đổi/parse.            |
+| `src/app/api/**`           | Các route HTTP mỏng, chỉ gọi vào `converter.ts`.                 |
 
 ---
 
@@ -135,6 +135,7 @@ Tất cả ở `src/lib/converter.ts`, build một lần:
 Cho phép so khớp không phân biệt dấu (`"Phường" ↔ "phuong"`).
 
 `stripUnitPrefix(normalized)` (`:24`): bỏ **một** tiền tố đơn vị để token khớp tên đơn vị.
+
 - Dạng dính số: `p6`/`f6`/`p.6`/`q1` → `6`/`1` (`f` là cách viết tắt không chính thức của "phường").
 - Dạng tiền tố + tên: `"phuong thanh khe"` → `"thanh khe"`.
 - Gộp số 0 đầu: `"p.06"` → `"6"`.
@@ -159,14 +160,14 @@ nên áp dụng cho **cả** từng phần đã tách phẩy lẫn chuỗi khôn
 
 Một từ là "mốc" (chèn ranh giới, chỉ khi segment hiện tại đã có nội dung) nếu:
 
-| Loại mốc                              | Ví dụ                          | Điều kiện               |
-| ------------------------------------- | ------------------------------ | ----------------------- |
-| Đơn vị **dính số**                    | `p16`, `q11`, `f6`, `p.16`    | luôn                    |
-| Alias tỉnh (1 hoặc 2 từ)              | `hcm`, `tphcm`, `sai gon`     | luôn                    |
-| Tiền tố 2 từ                          | `thành phố`, `thị xã`, `thị trấn` | luôn                |
-| Viết tắt thành phố                    | `tp`, `tx`                     | có từ theo sau          |
-| `phường/quận/huyện/xã` **rời**        | `phường 16`, `quận 11`        | **từ sau là số**        |
-| Chữ cái đơn `p/f/q/h/x` **rời**       | `p 16`, `q 11`                | **từ sau là số**        |
+| Loại mốc                        | Ví dụ                             | Điều kiện        |
+| ------------------------------- | --------------------------------- | ---------------- |
+| Đơn vị **dính số**              | `p16`, `q11`, `f6`, `p.16`        | luôn             |
+| Alias tỉnh (1 hoặc 2 từ)        | `hcm`, `tphcm`, `sai gon`         | luôn             |
+| Tiền tố 2 từ                    | `thành phố`, `thị xã`, `thị trấn` | luôn             |
+| Viết tắt thành phố              | `tp`, `tx`                        | có từ theo sau   |
+| `phường/quận/huyện/xã` **rời**  | `phường 16`, `quận 11`            | **từ sau là số** |
+| Chữ cái đơn `p/f/q/h/x` **rời** | `p 16`, `q 11`                    | **từ sau là số** |
 
 **Vì sao có điều kiện "từ sau là số"?** Tránh nhầm tên riêng/biển hiệu với tiền tố: `"Phương"`,
 `"Huyền"` (→ `phuong`/`huyen`), hay `"quán …"` (→ `quan`) sẽ **không** bị tách vì không có số theo sau.
@@ -223,12 +224,12 @@ Tất cả route mỏng, đặt `Cache-Control: no-store` (kết quả đổi th
 React Query đã dedupe in‑memory theo session). Có cổng same‑origin ở `src/proxy.ts` chặn gọi
 cross‑site cho `/api` (trừ `/api/auth`).
 
-| Method & path                              | Vào                       | Ra                                        |
-| ------------------------------------------ | ------------------------- | ----------------------------------------- |
-| `GET /api/parse?q=<addr>`                  | `parseAddress(q)`         | `ParseResult` (q rỗng → `candidates: []`) |
-| `POST /api/parse-bulk`                     | `{ addresses: string[], target?: "new"\|"old" }` | `{ results: FreeformConversion[] }` |
-| `GET /api/convert/old-to-new/[wardCode]`   | `convertOldToNew(code)`   | `OldToNewResult` (404 nếu không thấy)     |
-| `GET /api/convert/new-to-old/[wardCode]`   | `convertNewToOld(code)`   | `NewToOldResult` (404 nếu không thấy)     |
+| Method & path                            | Vào                                              | Ra                                        |
+| ---------------------------------------- | ------------------------------------------------ | ----------------------------------------- |
+| `GET /api/parse?q=<addr>`                | `parseAddress(q)`                                | `ParseResult` (q rỗng → `candidates: []`) |
+| `POST /api/parse-bulk`                   | `{ addresses: string[], target?: "new"\|"old" }` | `{ results: FreeformConversion[] }`       |
+| `GET /api/convert/old-to-new/[wardCode]` | `convertOldToNew(code)`                          | `OldToNewResult` (404 nếu không thấy)     |
+| `GET /api/convert/new-to-old/[wardCode]` | `convertNewToOld(code)`                          | `NewToOldResult` (404 nếu không thấy)     |
 
 `parse-bulk`: tối đa **20.000 dòng**/lần (`MAX_ROWS`, vượt → 413); body sai → 400; `target` mặc định `"new"`.
 
